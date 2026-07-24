@@ -7,15 +7,26 @@ import type { RegionLetter } from "../palette";
  * "unsolvable" / "unique solution" / "multiple solutions" without paying
  * for a full search on easy boards.
  */
-export function countSolutions(regions: RegionLetter[][], cap = 2): number {
+/**
+ * `nodeBudget` bounds how many row-placements the search may explore
+ * before giving up. A weakly-constrained board (few regions actually
+ * narrowing the layout) can otherwise take seconds to even find its
+ * 2nd solution as N grows — the generator only needs to know "not
+ * unique" quickly to move on to the next candidate, so on budget
+ * exhaustion we report `cap` (treated as "too many, reject") rather
+ * than searching to completion.
+ */
+export function countSolutions(regions: RegionLetter[][], cap = 2, nodeBudget = 200_000): number {
   const size = regions.length;
   const usedCols = new Array<boolean>(size).fill(false);
   const usedRegions = new Set<RegionLetter>();
   const queenCols: number[] = [];
   let found = 0;
+  let nodes = 0;
+  let budgetExceeded = false;
 
   function backtrack(row: number) {
-    if (found >= cap) return;
+    if (found >= cap || budgetExceeded) return;
     if (row === size) {
       found++;
       return;
@@ -28,6 +39,12 @@ export function countSolutions(regions: RegionLetter[][], cap = 2): number {
       const prevCol = row > 0 ? queenCols[row - 1] : null;
       if (prevCol !== null && Math.abs(prevCol - col) <= 1) continue;
 
+      nodes++;
+      if (nodes > nodeBudget) {
+        budgetExceeded = true;
+        return;
+      }
+
       usedCols[col] = true;
       usedRegions.add(region);
       queenCols.push(col);
@@ -38,12 +55,12 @@ export function countSolutions(regions: RegionLetter[][], cap = 2): number {
       usedRegions.delete(region);
       queenCols.pop();
 
-      if (found >= cap) return;
+      if (found >= cap || budgetExceeded) return;
     }
   }
 
   backtrack(0);
-  return found;
+  return budgetExceeded ? cap : found;
 }
 
 export function hasUniqueSolution(regions: RegionLetter[][]): boolean {
