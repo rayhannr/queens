@@ -14,10 +14,23 @@ function emptyBoard(size: number): CellState[][] {
   return Array.from({ length: size }, () => Array.from({ length: size }, () => "empty" as CellState));
 }
 
+interface GameState {
+  board: CellState[][];
+  queens: Position[];
+}
+
+function emptyState(size: number): GameState {
+  return { board: emptyBoard(size), queens: [] };
+}
+
 export function useQueensGame(regions: RegionLetter[][]) {
   const size = regions.length;
-  const [board, setBoard] = useState<CellState[][]>(() => emptyBoard(size));
-  const [queens, setQueens] = useState<Position[]>([]);
+  // board and queens are derived together from a single click, so they
+  // live in one state update — kept as two separate useState calls (with
+  // setQueens invoked as a side effect from inside the setBoard updater),
+  // the updater stopped being pure and React StrictMode's dev-mode double
+  // invocation of updaters silently double-added queens on every click.
+  const [{ board, queens }, setState] = useState<GameState>(() => emptyState(size));
 
   const conflictedQueens = useMemo(() => {
     const conflicted = new Set<string>();
@@ -43,28 +56,29 @@ export function useQueensGame(regions: RegionLetter[][]) {
   const isFinished = queens.length === size && conflictedQueens.size === 0;
 
   const onClickCell = useCallback((row: number, col: number) => {
-    setBoard((prevBoard) => {
+    setState(({ board: prevBoard, queens: prevQueens }) => {
       const current = prevBoard[row][col];
       let next: CellState = "empty";
+      let nextQueens = prevQueens;
 
-      if (current === "empty") next = "blocker";
-      else if (current === "blocker") {
+      if (current === "empty") {
+        next = "blocker";
+      } else if (current === "blocker") {
         next = "queen";
-        setQueens((prevQueens) => [...prevQueens, { row, col }]);
+        nextQueens = [...prevQueens, { row, col }];
       } else if (current === "queen") {
         next = "empty";
-        setQueens((prevQueens) => prevQueens.filter((q) => q.row !== row || q.col !== col));
+        nextQueens = prevQueens.filter((q) => q.row !== row || q.col !== col);
       }
 
       const nextBoard = prevBoard.map((r) => r.slice());
       nextBoard[row][col] = next;
-      return nextBoard;
+      return { board: nextBoard, queens: nextQueens };
     });
   }, []);
 
   const reset = useCallback(() => {
-    setBoard(emptyBoard(size));
-    setQueens([]);
+    setState(emptyState(size));
   }, [size]);
 
   return { board, queens, conflictedQueens, isFinished, onClickCell, reset };
