@@ -14,7 +14,7 @@ export default async function LevelPage({ params }: { params: Promise<{ id: stri
   if (!level) notFound();
 
   return (
-    <div className="flex min-h-screen flex-col items-center bg-gradient-to-b from-zinc-50 to-zinc-100 px-6 py-12 dark:from-black dark:to-zinc-950">
+    <div className="flex min-h-screen flex-col items-center bg-gradient-to-b from-zinc-50 to-zinc-100 px-6 py-12 dark:from-transparent dark:to-transparent">
       <div className="flex w-full max-w-2xl flex-col items-center gap-6">
         <div className="flex w-full items-center justify-between">
           <Link
