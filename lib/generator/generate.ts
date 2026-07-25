@@ -218,6 +218,64 @@ function staysConnected(regions: RegionLetter[][], letter: RegionLetter, exclude
 }
 
 /**
+ * Fraction of accepted boards that attempt to break one region into a
+ * disconnected piece, matching how often hand-built Queens levels do this
+ * (see the queens-difficulty-benchmark memory: ~42% of a large corpus has
+ * at least one split region, but most of that is a single stray cell, not
+ * a full scatter). We target a smaller share here since a stray cell is a
+ * subtle variation, not a goal in itself — `attemptScatter` can also fail
+ * to find a legal move, so the realized rate is slightly under this.
+ */
+const SCATTER_PROBABILITY = 0.25
+
+/**
+ * Tries to peel one non-seed cell away from its region and hand it to a
+ * different region it doesn't already touch, so it lands as a genuinely
+ * disconnected stray cell rather than ordinary contiguous growth. Only
+ * accepted if the donor region stays at or above MIN_REGION and the
+ * resulting board still satisfies `isAcceptable` (the same solvability
+ * gate the caller already used to accept `regions`). Returns null if no
+ * such move turns up within `tries` attempts.
+ */
+function attemptScatter(
+  regions: RegionLetter[][],
+  seedKeys: Set<number>,
+  size: number,
+  isAcceptable: (candidate: RegionLetter[][]) => boolean,
+  tries = 40
+): RegionLetter[][] | null {
+  const letters = REGION_LETTERS.slice(0, size)
+  const counts = new Map<RegionLetter, number>()
+  for (const row of regions) for (const letter of row) counts.set(letter, (counts.get(letter) ?? 0) + 1)
+
+  for (let attempt = 0; attempt < tries; attempt++) {
+    const r = randInt(size)
+    const c = randInt(size)
+    if (seedKeys.has(r * size + c)) continue
+
+    const donor = regions[r][c]
+    if ((counts.get(donor) ?? 0) <= MIN_REGION) continue
+
+    const target = letters[randInt(letters.length)]
+    if (target === donor) continue
+
+    const touchesTarget = DIRS.some(([dr, dc]) => {
+      const nr = r + dr
+      const nc = c + dc
+      return nr >= 0 && nr < size && nc >= 0 && nc < size && regions[nr][nc] === target
+    })
+    if (touchesTarget) continue
+
+    const candidate = regions.map(row => [...row])
+    candidate[r][c] = target
+    if (!isAcceptable(candidate)) continue
+
+    return candidate
+  }
+  return null
+}
+
+/**
  * Nudges region borders until the board can be cracked by deduction alone.
  *
  * Growing regions at random and hoping for a good board does not work —
@@ -301,7 +359,17 @@ export function generateBoard(options: GenerateOptions): RegionLetter[][] {
     if (!anyFallback) anyFallback = regions
 
     const logical = solveLogically(regions)
-    if (logical.solved && logical.hardestTier <= maxTier) return regions
+    if (logical.solved && logical.hardestTier <= maxTier) {
+      if (Math.random() < SCATTER_PROBABILITY) {
+        const seedKeys = new Set(seedCols.map((col, row) => row * size + col))
+        const scattered = attemptScatter(regions, seedKeys, size, candidate => {
+          const result = solveLogically(candidate)
+          return result.solved && result.hardestTier <= maxTier
+        })
+        if (scattered) return scattered
+      }
+      return regions
+    }
 
     // cap=2 is enough to classify "unique" vs "not unique" and lets the
     // solver bail out the moment a second solution is found.
