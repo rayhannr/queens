@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "oxlint",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.7",
@@ -22,8 +24,8 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.2.11",
+    "oxfmt": "^0.60.0",
+    "oxlint": "^1.75.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

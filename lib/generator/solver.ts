@@ -1,4 +1,4 @@
-import type { RegionLetter } from "../palette";
+import type { RegionLetter } from '../palette'
 
 /**
  * Backtracking solver for a Queens board: one queen per row, per column,
@@ -17,52 +17,52 @@ import type { RegionLetter } from "../palette";
  * than searching to completion.
  */
 export function countSolutions(regions: RegionLetter[][], cap = 2, nodeBudget = 200_000): number {
-  const size = regions.length;
-  const usedCols = new Array<boolean>(size).fill(false);
-  const usedRegions = new Set<RegionLetter>();
-  const queenCols: number[] = [];
-  let found = 0;
-  let nodes = 0;
-  let budgetExceeded = false;
+  const size = regions.length
+  const usedCols = new Array<boolean>(size).fill(false)
+  const usedRegions = new Set<RegionLetter>()
+  const queenCols: number[] = []
+  let found = 0
+  let nodes = 0
+  let budgetExceeded = false
 
   function backtrack(row: number) {
-    if (found >= cap || budgetExceeded) return;
+    if (found >= cap || budgetExceeded) return
     if (row === size) {
-      found++;
-      return;
+      found++
+      return
     }
     for (let col = 0; col < size; col++) {
-      if (usedCols[col]) continue;
-      const region = regions[row][col];
-      if (usedRegions.has(region)) continue;
+      if (usedCols[col]) continue
+      const region = regions[row][col]
+      if (usedRegions.has(region)) continue
 
-      const prevCol = row > 0 ? queenCols[row - 1] : null;
-      if (prevCol !== null && Math.abs(prevCol - col) <= 1) continue;
+      const prevCol = row > 0 ? queenCols[row - 1] : null
+      if (prevCol !== null && Math.abs(prevCol - col) <= 1) continue
 
-      nodes++;
+      nodes++
       if (nodes > nodeBudget) {
-        budgetExceeded = true;
-        return;
+        budgetExceeded = true
+        return
       }
 
-      usedCols[col] = true;
-      usedRegions.add(region);
-      queenCols.push(col);
+      usedCols[col] = true
+      usedRegions.add(region)
+      queenCols.push(col)
 
-      backtrack(row + 1);
+      backtrack(row + 1)
 
-      usedCols[col] = false;
-      usedRegions.delete(region);
-      queenCols.pop();
+      usedCols[col] = false
+      usedRegions.delete(region)
+      queenCols.pop()
 
-      if (found >= cap || budgetExceeded) return;
+      if (found >= cap || budgetExceeded) return
     }
   }
 
-  backtrack(0);
-  return budgetExceeded ? cap : found;
+  backtrack(0)
+  return budgetExceeded ? cap : found
 }
 
 export function hasUniqueSolution(regions: RegionLetter[][]): boolean {
-  return countSolutions(regions, 2) === 1;
+  return countSolutions(regions, 2) === 1
 }
