@@ -6,7 +6,7 @@ export function LevelPreview({ level }: { level: Level }) {
   return (
     <div
       className="grid aspect-square w-full overflow-hidden rounded-lg"
-      style={{ gridTemplateColumns: `repeat(${level.size}, minmax(0, 1fr))` }}
+      style={{ gridTemplateColumns: `repeat(${level.regions.length}, minmax(0, 1fr))` }}
     >
       {level.regions.flatMap((row, r) =>
         row.map((letter, c) => <div key={`${r}-${c}`} style={{ backgroundColor: colorForRegion(letter.charCodeAt(0) - 65).bg }} />)

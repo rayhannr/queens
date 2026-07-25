@@ -20,13 +20,20 @@ export function nextCellState(current: CellState): CellState {
   return 'empty'
 }
 
+interface HistoryEntry {
+  row: number
+  col: number
+  prev: CellState
+}
+
 interface GameState {
   board: CellState[][]
   queens: Position[]
+  history: HistoryEntry[]
 }
 
 function emptyState(size: number): GameState {
-  return { board: emptyBoard(size), queens: [] }
+  return { board: emptyBoard(size), queens: [], history: [] }
 }
 
 export function useQueensGame(regions: RegionLetter[][]) {
@@ -36,7 +43,7 @@ export function useQueensGame(regions: RegionLetter[][]) {
   // setQueens invoked as a side effect from inside the setBoard updater),
   // the updater stopped being pure and React StrictMode's dev-mode double
   // invocation of updaters silently double-added queens on every click.
-  const [{ board, queens }, setState] = useState<GameState>(() => emptyState(size))
+  const [{ board, queens, history }, setState] = useState<GameState>(() => emptyState(size))
 
   const conflictedQueens = useMemo(() => {
     const conflicted = new Set<string>()
@@ -62,7 +69,7 @@ export function useQueensGame(regions: RegionLetter[][]) {
   const isFinished = queens.length === size && conflictedQueens.size === 0
 
   const onClickCell = useCallback((row: number, col: number) => {
-    setState(({ board: prevBoard, queens: prevQueens }) => {
+    setState(({ board: prevBoard, queens: prevQueens, history: prevHistory }) => {
       const current = prevBoard[row][col]
       const next = nextCellState(current)
       let nextQueens = prevQueens
@@ -75,13 +82,14 @@ export function useQueensGame(regions: RegionLetter[][]) {
 
       const nextBoard = prevBoard.map(r => r.slice())
       nextBoard[row][col] = next
-      return { board: nextBoard, queens: nextQueens }
+      return { board: nextBoard, queens: nextQueens, history: [...prevHistory, { row, col, prev: current }] }
     })
   }, [])
 
   const paintCell = useCallback((row: number, col: number, from: CellState, to: CellState) => {
-    setState(({ board: prevBoard, queens: prevQueens }) => {
-      if (prevBoard[row][col] !== from) return { board: prevBoard, queens: prevQueens }
+    setState(prev => {
+      const { board: prevBoard, queens: prevQueens, history: prevHistory } = prev
+      if (prevBoard[row][col] !== from) return prev
 
       let nextQueens = prevQueens
       if (to === 'queen') {
@@ -92,7 +100,27 @@ export function useQueensGame(regions: RegionLetter[][]) {
 
       const nextBoard = prevBoard.map(r => r.slice())
       nextBoard[row][col] = to
-      return { board: nextBoard, queens: nextQueens }
+      return { board: nextBoard, queens: nextQueens, history: [...prevHistory, { row, col, prev: from }] }
+    })
+  }, [])
+
+  const undo = useCallback(() => {
+    setState(({ board: prevBoard, queens: prevQueens, history: prevHistory }) => {
+      if (prevHistory.length === 0) return { board: prevBoard, queens: prevQueens, history: prevHistory }
+
+      const last = prevHistory[prevHistory.length - 1]
+      const current = prevBoard[last.row][last.col]
+      let nextQueens = prevQueens
+
+      if (last.prev === 'queen') {
+        nextQueens = [...prevQueens, { row: last.row, col: last.col }]
+      } else if (current === 'queen') {
+        nextQueens = prevQueens.filter(q => q.row !== last.row || q.col !== last.col)
+      }
+
+      const nextBoard = prevBoard.map(r => r.slice())
+      nextBoard[last.row][last.col] = last.prev
+      return { board: nextBoard, queens: nextQueens, history: prevHistory.slice(0, -1) }
     })
   }, [])
 
@@ -100,5 +128,5 @@ export function useQueensGame(regions: RegionLetter[][]) {
     setState(emptyState(size))
   }, [size])
 
-  return { board, queens, conflictedQueens, isFinished, onClickCell, paintCell, reset }
+  return { board, queens, conflictedQueens, isFinished, onClickCell, paintCell, undo, canUndo: history.length > 0, reset }
 }

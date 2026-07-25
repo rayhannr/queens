@@ -315,5 +315,5 @@ export function generateBoard(options: GenerateOptions): RegionLetter[][] {
 
 export function generateLevel(id: string, size: number, maxTier?: Tier): Level {
   const regions = generateBoard({ size, maxTier })
-  return { id, size, regions, colorCount: size }
+  return { id, regions }
 }

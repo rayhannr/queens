@@ -23,7 +23,7 @@ export default function Home() {
             <div className="flex flex-col items-center gap-0.5">
               <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Level {i + 1}</span>
               <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                {level.size}×{level.size} · {level.colorCount} colors
+                {level.regions.length}×{level.regions.length} · {level.regions.length} colors
               </span>
             </div>
           </Link>

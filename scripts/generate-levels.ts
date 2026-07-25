@@ -36,8 +36,6 @@ function main() {
     .map(
       level => `  {
     id: ${JSON.stringify(level.id)},
-    size: ${level.size},
-    colorCount: ${level.colorCount},
     regions: ${JSON.stringify(level.regions)},
   },`
     )
@@ -56,7 +54,7 @@ ${body}
   const outPath = join(__dirname, '..', 'lib', 'levels', 'data.ts')
   writeFileSync(outPath, output, 'utf-8')
   console.log(`Appended ${newLevels.length} level(s) to ${outPath}`)
-  newLevels.forEach(l => console.log(`  level ${l.id}: ${l.size}x${l.size}, ${l.colorCount} colors`))
+  newLevels.forEach(l => console.log(`  level ${l.id}: ${l.regions.length}x${l.regions.length}, ${l.regions.length} colors`))
 }
 
 main()

@@ -10,16 +10,29 @@ import { CrownBurstLayer, type Spawn } from './three/CrownBurst'
 import { WinConfetti } from './three/WinConfetti'
 
 export function Board({ level, levelNumber, prevId, nextId }: { level: Level; levelNumber?: number; prevId?: string; nextId?: string }) {
-  const { board, queens, conflictedQueens, isFinished, onClickCell, paintCell, reset } = useQueensGame(level.regions)
+  const { board, queens, conflictedQueens, isFinished, onClickCell, paintCell, undo, canUndo, reset } = useQueensGame(level.regions)
   const placed = queens.length
+  const size = level.regions.length
 
   const [spawns, setSpawns] = useState<Spawn[]>([])
   const [showLetters, setShowLetters] = useState(true)
-  const [showSolvedModal, setShowSolvedModal] = useState(false)
+  const dialogRef = useRef<HTMLDialogElement>(null)
 
   useEffect(() => {
-    if (isFinished) setShowSolvedModal(true)
+    if (isFinished) dialogRef.current?.showModal()
+    else dialogRef.current?.close()
   }, [isFinished])
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault()
+        undo()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [undo])
 
   const prevQueensRef = useRef<Position[]>([])
   const gridRef = useRef<HTMLDivElement>(null)
@@ -61,8 +74,8 @@ export function Board({ level, levelNumber, prevId, nextId }: { level: Level; le
           ...s,
           {
             id: `${added.row}-${added.col}-${Date.now()}`,
-            x: added.col - (level.size - 1) / 2,
-            y: (level.size - 1) / 2 - added.row,
+            x: added.col - (size - 1) / 2,
+            y: (size - 1) / 2 - added.row,
             color: region.bg,
             bornAt: performance.now()
           }
@@ -70,13 +83,13 @@ export function Board({ level, levelNumber, prevId, nextId }: { level: Level; le
       }
     }
     prevQueensRef.current = queens
-  }, [queens, level.regions, level.size])
+  }, [queens, level.regions, size])
 
   return (
     <div className="flex w-full flex-col items-center gap-5">
       <div className="flex w-full max-w-[min(90vw,560px)] items-center justify-between text-sm text-zinc-600 dark:text-zinc-400">
         <span>
-          {placed} / {level.size} queens placed
+          {placed} / {size} queens placed
         </span>
         <div className="flex items-center gap-3">
           <label className="flex items-center gap-2 text-xs font-medium">
@@ -99,6 +112,14 @@ export function Board({ level, levelNumber, prevId, nextId }: { level: Level; le
           </label>
           <button
             type="button"
+            onClick={undo}
+            disabled={!canUndo}
+            className="rounded-full border border-black/10 px-3 py-1 text-xs font-medium transition-colors hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:border-white/10 dark:hover:bg-white/10"
+          >
+            Undo
+          </button>
+          <button
+            type="button"
             onClick={reset}
             className="rounded-full border border-black/10 px-3 py-1 text-xs font-medium transition-colors hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10"
           >
@@ -114,7 +135,7 @@ export function Board({ level, levelNumber, prevId, nextId }: { level: Level; le
           onPointerUp={endDrag}
           onPointerCancel={endDrag}
           className="grid gap-1 rounded-xl bg-black/5 p-2 shadow-inner dark:bg-white/5 sm:gap-1.5 sm:p-3"
-          style={{ gridTemplateColumns: `repeat(${level.size}, minmax(0, 1fr))` }}
+          style={{ gridTemplateColumns: `repeat(${size}, minmax(0, 1fr))` }}
         >
           {board.map((row, r) =>
             row.map((state, c) => (
@@ -135,50 +156,54 @@ export function Board({ level, levelNumber, prevId, nextId }: { level: Level; le
           )}
         </div>
 
-        <CrownBurstLayer spawns={spawns} size={level.size} onDone={id => setSpawns(s => s.filter(sp => sp.id !== id))} />
+        <CrownBurstLayer spawns={spawns} size={size} onDone={id => setSpawns(s => s.filter(sp => sp.id !== id))} />
         <WinConfetti active={isFinished} />
       </div>
 
-      {isFinished && showSolvedModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" onClick={() => setShowSolvedModal(false)}>
-          <div
-            className="animate-win-in flex w-full max-w-xs flex-col items-center gap-4 rounded-2xl bg-white p-6 text-center shadow-xl dark:bg-zinc-900"
-            onClick={e => e.stopPropagation()}
+      <dialog
+        ref={dialogRef}
+        onClick={e => {
+          if (e.target === dialogRef.current) dialogRef.current?.close()
+        }}
+        className="animate-win-in fixed inset-0 m-auto h-fit w-full max-w-xs rounded-2xl bg-white p-0 shadow-xl backdrop:bg-black/50 open:flex dark:bg-zinc-900"
+      >
+        <div className="relative flex w-full flex-col items-center gap-1 p-6 pt-8 text-center">
+          <button
+            type="button"
+            onClick={() => dialogRef.current?.close()}
+            aria-label="Close"
+            className="absolute right-3 top-3 rounded-full p-1.5 text-zinc-400 transition-colors hover:bg-black/5 hover:text-zinc-700 dark:hover:bg-white/10 dark:hover:text-zinc-200"
           >
-            <span className="text-lg font-semibold text-emerald-600 dark:text-emerald-400">Solved! 🎉</span>
-            {levelNumber && <span className="text-sm text-zinc-500 dark:text-zinc-400">Level {levelNumber}</span>}
-            <div className="flex w-full items-center gap-2">
-              {prevId ? (
-                <Link
-                  href={`/level/${prevId}`}
-                  className="flex-1 rounded-full border border-black/10 px-4 py-2 text-sm font-medium transition-colors hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10"
-                >
-                  ← Previous
-                </Link>
-              ) : (
-                <span className="flex-1" />
-              )}
-              {nextId ? (
-                <Link
-                  href={`/level/${nextId}`}
-                  className="flex-1 rounded-full bg-emerald-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-600"
-                >
-                  Next →
-                </Link>
-              ) : (
-                <span className="flex-1" />
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowSolvedModal(false)}
-              className="text-xs font-medium text-zinc-500 transition-colors hover:text-zinc-900 dark:hover:text-zinc-100"
-            >
-              Close
-            </button>
+            <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+              <path d="M5 5l10 10M15 5L5 15" />
+            </svg>
+          </button>
+
+          <span className="mx-auto text-3xl">🎉</span>
+          <span className="mt-1 block text-lg font-semibold text-zinc-900 dark:text-zinc-50">Solved!</span>
+          {levelNumber && <span className="block text-sm text-zinc-500 dark:text-zinc-400">Level {levelNumber}</span>}
+
+          <div className="mt-5 flex w-full flex-col gap-2">
+            {nextId && (
+              <Link
+                href={`/level/${nextId}`}
+                className="btn-shine group flex w-full items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-emerald-400 to-teal-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-500/30 transition-all duration-200 hover:scale-[1.03] hover:shadow-xl hover:shadow-emerald-500/50 active:scale-[0.97]"
+              >
+                Next level
+                <span className="transition-transform duration-200 group-hover:translate-x-1">→</span>
+              </Link>
+            )}
+            {prevId && (
+              <Link
+                href={`/level/${prevId}`}
+                className="w-full rounded-full border border-black/10 px-4 py-2.5 text-sm font-medium text-zinc-700 transition-all duration-200 hover:scale-[1.02] hover:bg-black/5 dark:border-white/10 dark:text-zinc-200 dark:hover:bg-white/10"
+              >
+                ← Previous level
+              </Link>
+            )}
           </div>
         </div>
-      )}
+      </dialog>
     </div>
   )
 }

@@ -21,7 +21,7 @@ export default async function LevelPage({ params }: { params: Promise<{ id: stri
             ← Levels
           </Link>
           <span className="text-sm text-zinc-500 dark:text-zinc-400">
-            {level.size}×{level.size} · {level.colorCount} colors
+            {level.regions.length}×{level.regions.length} · {level.regions.length} colors
           </span>
         </div>
 
