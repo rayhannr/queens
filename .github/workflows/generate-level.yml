@@ -27,7 +27,8 @@ jobs:
 
       - run: npm ci
 
-      - run: npm run generate:level -- ${{ github.event.inputs.count || '1' }}
+      - id: generate
+        run: npm run generate:level -- ${{ github.event.inputs.count || '1' }}
 
       - run: npx tsc --noEmit
 
@@ -40,5 +41,5 @@ jobs:
             exit 0
           fi
           git add lib/levels/data.ts
-          git commit -m "Add generated level(s)"
+          git commit -m "generate level ${{ steps.generate.outputs.level_range }}"
           git push

@@ -55,6 +55,12 @@ ${body}
   writeFileSync(outPath, output, 'utf-8')
   console.log(`Appended ${newLevels.length} level(s) to ${outPath}`)
   newLevels.forEach(l => console.log(`  level ${l.id}: ${l.regions.length}x${l.regions.length}, ${l.regions.length} colors`))
+
+  const endId = startId + count - 1
+  const range = count > 1 ? `${startId}-${endId}` : String(startId)
+  if (process.env.GITHUB_OUTPUT) {
+    writeFileSync(process.env.GITHUB_OUTPUT, `level_range=${range}\n`, { flag: 'a' })
+  }
 }
 
 main()
