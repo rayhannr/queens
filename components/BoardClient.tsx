@@ -12,6 +12,16 @@ const Board = dynamic(() => import('./Board').then(m => m.Board), {
   )
 })
 
-export function BoardClient({ level }: { level: Level }) {
-  return <Board level={level} />
+export function BoardClient({
+  level,
+  levelNumber,
+  prevId,
+  nextId
+}: {
+  level: Level
+  levelNumber: number
+  prevId?: string
+  nextId?: string
+}) {
+  return <Board level={level} levelNumber={levelNumber} prevId={prevId} nextId={nextId} />
 }

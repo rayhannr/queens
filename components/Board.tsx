@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { nextCellState, useQueensGame, type CellState, type Position } from '@/lib/game/useQueensGame'
 import type { Level } from '@/lib/generator/types'
@@ -8,12 +9,18 @@ import { Cell } from './Cell'
 import { CrownBurstLayer, type Spawn } from './three/CrownBurst'
 import { WinConfetti } from './three/WinConfetti'
 
-export function Board({ level }: { level: Level }) {
+export function Board({ level, levelNumber, prevId, nextId }: { level: Level; levelNumber?: number; prevId?: string; nextId?: string }) {
   const { board, queens, conflictedQueens, isFinished, onClickCell, paintCell, reset } = useQueensGame(level.regions)
   const placed = queens.length
 
   const [spawns, setSpawns] = useState<Spawn[]>([])
   const [showLetters, setShowLetters] = useState(true)
+  const [showSolvedModal, setShowSolvedModal] = useState(false)
+
+  useEffect(() => {
+    if (isFinished) setShowSolvedModal(true)
+  }, [isFinished])
+
   const prevQueensRef = useRef<Position[]>([])
   const gridRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<{ from: CellState; to: CellState } | null>(null)
@@ -132,9 +139,44 @@ export function Board({ level }: { level: Level }) {
         <WinConfetti active={isFinished} />
       </div>
 
-      {isFinished && (
-        <div className="animate-win-in rounded-full bg-emerald-500/15 px-5 py-2 text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-          Solved! 🎉
+      {isFinished && showSolvedModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" onClick={() => setShowSolvedModal(false)}>
+          <div
+            className="animate-win-in flex w-full max-w-xs flex-col items-center gap-4 rounded-2xl bg-white p-6 text-center shadow-xl dark:bg-zinc-900"
+            onClick={e => e.stopPropagation()}
+          >
+            <span className="text-lg font-semibold text-emerald-600 dark:text-emerald-400">Solved! 🎉</span>
+            {levelNumber && <span className="text-sm text-zinc-500 dark:text-zinc-400">Level {levelNumber}</span>}
+            <div className="flex w-full items-center gap-2">
+              {prevId ? (
+                <Link
+                  href={`/level/${prevId}`}
+                  className="flex-1 rounded-full border border-black/10 px-4 py-2 text-sm font-medium transition-colors hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10"
+                >
+                  ← Previous
+                </Link>
+              ) : (
+                <span className="flex-1" />
+              )}
+              {nextId ? (
+                <Link
+                  href={`/level/${nextId}`}
+                  className="flex-1 rounded-full bg-emerald-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-600"
+                >
+                  Next →
+                </Link>
+              ) : (
+                <span className="flex-1" />
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowSolvedModal(false)}
+              className="text-xs font-medium text-zinc-500 transition-colors hover:text-zinc-900 dark:hover:text-zinc-100"
+            >
+              Close
+            </button>
+          </div>
         </div>
       )}
     </div>

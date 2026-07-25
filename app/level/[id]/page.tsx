@@ -27,7 +27,7 @@ export default async function LevelPage({ params }: { params: Promise<{ id: stri
 
         <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">Level {index + 1}</h1>
 
-        <BoardClient level={level} />
+        <BoardClient level={level} levelNumber={index + 1} prevId={LEVELS[index - 1]?.id} nextId={LEVELS[index + 1]?.id} />
       </div>
     </div>
   )
