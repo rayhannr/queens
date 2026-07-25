@@ -37,6 +37,7 @@ function main() {
       level => `  {
     id: ${JSON.stringify(level.id)},
     regions: ${JSON.stringify(level.regions)},
+    hasUniqueSolution: ${level.hasUniqueSolution},
   },`
     )
     .join('\n')

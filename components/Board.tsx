@@ -5,6 +5,8 @@ import { useEffect, useRef, useState } from 'react'
 import { nextCellState, useQueensGame, type CellState, type Position } from '@/lib/game/useQueensGame'
 import type { Level } from '@/lib/generator/types'
 import { colorForRegion } from '@/lib/palette'
+import { recordCompletion } from '@/lib/progress'
+import { formatDuration } from '@/lib/time'
 import { Cell } from './Cell'
 import { CrownBurstLayer, type Spawn } from './three/CrownBurst'
 import { WinConfetti } from './three/WinConfetti'
@@ -17,6 +19,59 @@ export function Board({ level, levelNumber, prevId, nextId }: { level: Level; le
   const [spawns, setSpawns] = useState<Spawn[]>([])
   const [showLetters, setShowLetters] = useState(true)
   const dialogRef = useRef<HTMLDialogElement>(null)
+
+  // Elapsed time is tracked as accumulated time-so-far plus the current
+  // running segment, so it can be paused (segment folded into the
+  // accumulator, runStart cleared) while the tab is hidden and resumed
+  // later without counting the away time.
+  const accumulatedRef = useRef(0)
+  const runStartRef = useRef<number | null>(document.hidden ? null : performance.now())
+  const [elapsedMs, setElapsedMs] = useState(0)
+  const [result, setResult] = useState<{ timeMs: number; bestTimeMs: number } | null>(null)
+
+  const currentElapsed = () =>
+    accumulatedRef.current + (runStartRef.current !== null ? performance.now() - runStartRef.current : 0)
+
+  useEffect(() => {
+    if (isFinished) return
+    const id = setInterval(() => setElapsedMs(currentElapsed()), 250)
+    return () => clearInterval(id)
+  }, [isFinished])
+
+  useEffect(() => {
+    if (isFinished) return
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        if (runStartRef.current !== null) {
+          accumulatedRef.current += performance.now() - runStartRef.current
+          runStartRef.current = null
+        }
+      } else {
+        runStartRef.current = performance.now()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [isFinished])
+
+  useEffect(() => {
+    if (!isFinished) return
+    if (runStartRef.current !== null) {
+      accumulatedRef.current += performance.now() - runStartRef.current
+      runStartRef.current = null
+    }
+    const timeMs = accumulatedRef.current
+    setElapsedMs(timeMs)
+    setResult({ timeMs, bestTimeMs: recordCompletion(level.id, timeMs).bestTimeMs })
+  }, [isFinished, level.id])
+
+  const handleReset = () => {
+    reset()
+    accumulatedRef.current = 0
+    runStartRef.current = document.hidden ? null : performance.now()
+    setElapsedMs(0)
+    setResult(null)
+  }
 
   useEffect(() => {
     if (isFinished) dialogRef.current?.showModal()
@@ -87,11 +142,16 @@ export function Board({ level, levelNumber, prevId, nextId }: { level: Level; le
 
   return (
     <div className="flex w-full flex-col items-center gap-5">
-      <div className="flex w-full max-w-[min(90vw,560px)] items-center justify-between text-sm text-zinc-600 dark:text-zinc-400">
-        <span>
-          {placed} / {size} queens placed
-        </span>
+      <div className="flex w-full max-w-[min(90vw,560px)] flex-wrap items-center justify-between gap-x-3 gap-y-2 text-sm text-zinc-600 dark:text-zinc-400">
         <div className="flex items-center gap-3">
+          <span className="whitespace-nowrap">
+            {placed} / {size} queens placed
+          </span>
+          <span className="whitespace-nowrap font-mono text-xs tabular-nums text-zinc-500 dark:text-zinc-400">
+            {formatDuration(elapsedMs)}
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
           <label className="flex items-center gap-2 text-xs font-medium">
             <span>Letters</span>
             <button
@@ -120,7 +180,7 @@ export function Board({ level, levelNumber, prevId, nextId }: { level: Level; le
           </button>
           <button
             type="button"
-            onClick={reset}
+            onClick={handleReset}
             className="rounded-full border border-black/10 px-3 py-1 text-xs font-medium transition-colors hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10"
           >
             Reset
@@ -182,6 +242,18 @@ export function Board({ level, levelNumber, prevId, nextId }: { level: Level; le
           <span className="mx-auto text-3xl">🎉</span>
           <span className="mt-1 block text-lg font-semibold text-zinc-900 dark:text-zinc-50">Solved!</span>
           {levelNumber && <span className="block text-sm text-zinc-500 dark:text-zinc-400">Level {levelNumber}</span>}
+          {result && (
+            <span className="mt-2 block text-sm text-zinc-600 dark:text-zinc-400">
+              Time <span className="font-mono tabular-nums">{formatDuration(result.timeMs)}</span>
+              {result.timeMs <= result.bestTimeMs ? (
+                <span className="ml-1.5 font-medium text-emerald-600 dark:text-emerald-400">New best!</span>
+              ) : (
+                <>
+                  {' · '}Best <span className="font-mono tabular-nums">{formatDuration(result.bestTimeMs)}</span>
+                </>
+              )}
+            </span>
+          )}
 
           <div className="mt-5 flex w-full flex-col gap-2">
             {nextId && (

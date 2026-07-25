@@ -7,33 +7,41 @@ export const LEVELS: Level[] = [
   {
     id: "1",
     regions: [["A","A","A","E","E","E","C"],["B","B","B","B","G","E","C"],["B","D","G","G","G","E","C"],["B","D","D","G","E","E","E"],["B","D","G","G","E","G","E"],["F","D","G","G","E","G","G"],["F","D","G","G","G","G","G"]],
+    hasUniqueSolution: true,
   },
   {
     id: "2",
     regions: [["D","D","D","D","D","B","C","C","A"],["D","D","D","D","B","B","C","A","A"],["D","D","E","E","E","E","C","F","F"],["D","D","D","E","G","G","C","C","F"],["E","E","D","E","E","G","G","C","F"],["E","E","E","E","G","G","F","F","F"],["E","E","E","E","I","G","G","I","I"],["E","H","E","E","I","G","I","I","I"],["H","H","I","I","I","I","I","I","I"]],
+    hasUniqueSolution: true,
   },
   {
     id: "3",
     regions: [["C","C","C","C","C","C","C","A","A","A","A"],["C","C","C","B","B","B","C","H","H","A","A"],["C","C","C","D","B","C","C","H","H","H","A"],["C","C","C","D","H","H","C","H","A","A","A"],["E","C","C","D","D","H","H","H","H","A","A"],["E","C","C","E","H","H","H","A","A","A","F"],["E","E","E","E","H","G","G","G","G","G","F"],["E","E","H","H","H","G","G","F","F","F","F"],["E","E","E","H","H","J","G","I","I","F","F"],["E","E","H","H","H","J","J","J","J","F","F"],["E","E","H","H","H","K","K","K","F","F","F"]],
+    hasUniqueSolution: true,
   },
   {
     id: "4",
     regions: [["A","A","A","A","A","A","A","A","C","C"],["A","A","A","A","C","A","A","A","C","B"],["A","F","F","A","C","C","A","A","C","B"],["A","D","F","C","C","C","C","C","C","B"],["A","D","F","F","F","E","E","E","E","E"],["A","A","A","F","F","F","F","F","E","E"],["A","H","A","G","F","F","F","F","G","E"],["A","H","H","G","G","G","G","G","G","G"],["A","I","I","I","I","G","G","G","G","G"],["G","G","G","G","G","G","G","J","J","G"]],
+    hasUniqueSolution: true,
   },
   {
     id: "5",
     regions: [["C","A","A","B","B","B","B","B"],["C","A","B","B","B","B","B","B"],["C","C","B","B","B","B","G","B"],["E","D","D","D","B","D","G","G"],["E","D","D","D","D","D","G","G"],["D","D","D","D","F","F","G","G"],["D","F","F","F","F","F","F","G"],["D","F","H","H","F","F","G","G"]],
+    hasUniqueSolution: true,
   },
   {
     id: "6",
     regions: [["A","A","A","A","C","C","B"],["A","A","A","C","C","C","B"],["G","C","C","C","C","D","E"],["G","G","G","D","D","D","E"],["F","G","G","D","D","E","E"],["F","G","G","D","D","D","E"],["G","G","G","G","G","D","E"]],
+    hasUniqueSolution: true,
   },
   {
     id: "7",
     regions: [["A","A","A","E","E"],["B","C","A","E","E"],["B","C","C","C","E"],["D","D","C","C","E"],["D","C","C","E","E"]],
+    hasUniqueSolution: true,
   },
   {
     id: "8",
     regions: [["A","A","A","A","A","A"],["B","B","B","A","A","A"],["B","B","C","A","A","A"],["B","B","C","A","A","D"],["B","E","E","D","D","D"],["B","B","E","E","F","F"]],
+    hasUniqueSolution: true,
   },
 ];

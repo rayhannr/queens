@@ -1,6 +1,6 @@
 import { REGION_LETTERS, type RegionLetter } from '../palette'
 import { solveLogically, Tier } from './logicalSolver'
-import { countSolutions } from './solver'
+import { countSolutions, hasUniqueSolution } from './solver'
 import type { Level } from './types'
 
 function randInt(max: number): number {
@@ -383,5 +383,5 @@ export function generateBoard(options: GenerateOptions): RegionLetter[][] {
 
 export function generateLevel(id: string, size: number, maxTier?: Tier): Level {
   const regions = generateBoard({ size, maxTier })
-  return { id, regions }
+  return { id, regions, hasUniqueSolution: hasUniqueSolution(regions) }
 }
