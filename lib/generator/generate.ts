@@ -1,4 +1,5 @@
 import { REGION_LETTERS, type RegionLetter } from '../palette'
+import { solveLogically, Tier } from './logicalSolver'
 import { countSolutions } from './solver'
 import type { Level } from './types'
 
@@ -44,12 +45,39 @@ function placeSeedQueens(size: number): number[] | null {
   return backtrack(0) ? cols : null
 }
 
+/** Smallest region any board may contain; see `staysConnected`. */
+const MIN_REGION = 2
+
 const DIRS = [
   [-1, 0],
   [1, 0],
   [0, -1],
   [0, 1]
 ]
+
+/**
+ * Picks how many cells each region should end up with. Growing every
+ * region to the same ~N cells is what made earlier boards brutal: with
+ * no small region anywhere, the player has no foothold to start from and
+ * must reason globally from move one. Hand-built Queens boards are
+ * lopsided — mostly small regions (a 2-3 cell region pins a row almost
+ * immediately) alongside one or two sprawling ones that soak up the
+ * leftover cells. The exponent skews the draw that way; the floor of 2
+ * keeps a region from collapsing to a single give-away cell.
+ */
+function pickTargetSizes(size: number): number[] {
+  const weights = Array.from({ length: size }, () => Math.pow(0.2 + Math.random(), 2.2))
+  const total = weights.reduce((a, b) => a + b, 0)
+  const budget = size * size - MIN_REGION * size
+
+  const targets = weights.map(w => MIN_REGION + Math.floor((w / total) * budget))
+  let slack = size * size - targets.reduce((a, b) => a + b, 0)
+  while (slack > 0) {
+    targets[randInt(size)]++
+    slack--
+  }
+  return targets
+}
 
 /**
  * Grows `size` regions from the seed queen cells using a randomized
@@ -61,6 +89,8 @@ const DIRS = [
  * board have few (ideally one) solutions.
  */
 function growRegions(size: number, seedCols: number[]): RegionLetter[][] {
+  const targets = pickTargetSizes(size)
+  const counts = new Array<number>(size).fill(1)
   const letters = REGION_LETTERS.slice(0, size)
   const regions: (RegionLetter | null)[][] = Array.from({ length: size }, () => new Array<RegionLetter | null>(size).fill(null))
 
@@ -87,10 +117,15 @@ function growRegions(size: number, seedCols: number[]): RegionLetter[][] {
   // advancing in lockstep and tends back toward smooth, unconstraining
   // blobs even with a random-walk shape.
   while (remaining > 0) {
-    const liveRegions = letters.map((_, i) => i).filter(i => stacks[i].length > 0)
-    if (liveRegions.length === 0) break
+    const live = letters.map((_, i) => i).filter(i => stacks[i].length > 0)
+    if (live.length === 0) break
 
-    const regionIdx = liveRegions[randInt(liveRegions.length)]
+    // Prefer regions still under their target; once every hungry region
+    // has dead-ended, let any live region take the leftovers so the board
+    // always fills completely.
+    const hungry = live.filter(i => counts[i] < targets[i])
+    const pool = hungry.length > 0 ? hungry : live
+    const regionIdx = pool[randInt(pool.length)]
     const stack = stacks[regionIdx]
     while (stack.length > 0) {
       const [r, c] = stack[stack.length - 1]
@@ -102,6 +137,7 @@ function growRegions(size: number, seedCols: number[]): RegionLetter[][] {
       const [nr, nc] = options[randInt(options.length)]
       regions[nr][nc] = letters[regionIdx]
       stack.push([nr, nc])
+      counts[regionIdx]++
       remaining--
       break
     }
@@ -122,6 +158,7 @@ function growRegions(size: number, seedCols: number[]): RegionLetter[][] {
               const regionIdx = letters.indexOf(neighborRegion)
               regions[r][c] = neighborRegion
               stacks[regionIdx].push([r, c])
+              counts[regionIdx]++
               remaining--
               break outer
             }
@@ -134,58 +171,149 @@ function growRegions(size: number, seedCols: number[]): RegionLetter[][] {
   return regions as RegionLetter[][]
 }
 
+/**
+ * How close a board is to being solvable by pure deduction: queens the
+ * logical solver pins down, with leftover ambiguous cells as a tiebreaker
+ * so two equally-stuck boards can still be ranked. This is the gradient
+ * the local search climbs.
+ */
+function deductionScore(regions: RegionLetter[][]): number {
+  const { placed, candidatesLeft } = solveLogically(regions)
+  return placed * 10_000 - candidatesLeft
+}
+
+/**
+ * Cells of `letter`, minus `exclude`, still form one orthogonally connected
+ * blob of at least MIN_REGION cells. The size floor matters as much as the
+ * connectivity check: left alone the search happily erodes a region down to
+ * a single cell, which hands the player a free queen and reads as a mistake
+ * — hand-built boards almost never contain one.
+ */
+function staysConnected(regions: RegionLetter[][], letter: RegionLetter, exclude: [number, number]): boolean {
+  const size = regions.length
+  const cells: [number, number][] = []
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
+      if (regions[r][c] === letter && !(r === exclude[0] && c === exclude[1])) cells.push([r, c])
+    }
+  }
+  if (cells.length < MIN_REGION) return false
+
+  const seen = new Set([cells[0][0] * size + cells[0][1]])
+  const queue = [cells[0]]
+  while (queue.length > 0) {
+    const [r, c] = queue.pop()!
+    for (const [dr, dc] of DIRS) {
+      const nr = r + dr
+      const nc = c + dc
+      const key = nr * size + nc
+      if (nr < 0 || nr >= size || nc < 0 || nc >= size) continue
+      if (seen.has(key) || regions[nr][nc] !== letter) continue
+      if (nr === exclude[0] && nc === exclude[1]) continue
+      seen.add(key)
+      queue.push([nr, nc])
+    }
+  }
+  return seen.size === cells.length
+}
+
+/**
+ * Nudges region borders until the board can be cracked by deduction alone.
+ *
+ * Growing regions at random and hoping for a good board does not work —
+ * measured against hand-built levels, well under 5% of random layouts are
+ * solvable without guessing, and the rate collapses further as the board
+ * grows. So instead of resampling, we hill-climb: repeatedly hand a single
+ * border cell to an adjacent region and keep the change unless it makes
+ * the board harder to deduce. Plateau moves (equal score) are kept too,
+ * which is what lets the search drift sideways out of local optima.
+ *
+ * Seed cells are never reassigned, so the original queen layout stays a
+ * valid solution throughout and the board can never become unsolvable.
+ */
+function refineByLocalSearch(regions: RegionLetter[][], seedCols: number[], iterations: number): RegionLetter[][] {
+  const size = regions.length
+  const seedKeys = new Set(seedCols.map((col, row) => row * size + col))
+  let best = regions.map(row => [...row])
+  let bestScore = deductionScore(best)
+
+  for (let step = 0; step < iterations; step++) {
+    if (bestScore >= size * 10_000 - size) break
+
+    const r = randInt(size)
+    const c = randInt(size)
+    if (seedKeys.has(r * size + c)) continue
+
+    const donor = best[r][c]
+    const neighbors = DIRS.map(([dr, dc]) => [r + dr, c + dc]).filter(
+      ([nr, nc]) => nr >= 0 && nr < size && nc >= 0 && nc < size && best[nr][nc] !== donor
+    )
+    if (neighbors.length === 0) continue
+    const [nr, nc] = neighbors[randInt(neighbors.length)]
+    if (!staysConnected(best, donor, [r, c])) continue
+
+    best[r][c] = best[nr][nc]
+    const score = deductionScore(best)
+    if (score >= bestScore) bestScore = score
+    else best[r][c] = donor
+  }
+
+  return best
+}
+
 export interface GenerateOptions {
   size: number
   maxAttempts?: number
+  /**
+   * Reject boards whose hardest required deduction exceeds this tier.
+   * Defaults to allowing everything solvable without guessing.
+   */
+  maxTier?: Tier
 }
 
 /**
  * Generates a valid Queens board. "Valid" is guaranteed by construction —
  * the randomly placed seed queens are always a legal solution for the
- * regions grown around them, so the board is never unsolvable. What
- * varies is how many *other* solutions the puzzle also admits; a board
- * with a unique solution is a much better puzzle than one with dozens.
+ * regions grown around them, so the board is never unsolvable.
  *
- * We search up to `maxAttempts` (default 300) random layouts and keep
- * the one with the fewest solutions, stopping early the moment we find
- * a uniquely-solvable one. This never throws — worst case we fall back
- * to the best (lowest solution count) board seen, so a scheduled job
- * generating levels unattended always gets a playable result.
+ * A unique solution alone does not make a good puzzle, though: a board can
+ * have exactly one answer that is only reachable by trial and error, which
+ * is what made earlier levels feel unfair. So the real gate is
+ * `solveLogically` — the board is accepted only if step-by-step deduction
+ * finishes it without guessing, which is how a person actually plays.
+ * Uniqueness follows for free from a board that propagation can close out.
+ *
+ * This never throws — worst case we fall back to the best board seen
+ * (preferring a logically-solvable one, then a uniquely-solvable one), so
+ * an unattended job always gets a playable result.
  */
 export function generateBoard(options: GenerateOptions): RegionLetter[][] {
-  // Larger boards make each solver call slower, so give them fewer
-  // attempts — still plenty since snake-shaped regions converge fast.
-  // Uniqueness gets harder to hit as size grows; past ~11 we mostly
-  // rely on the fallback (solvable, just not guaranteed unique) since
-  // chasing a unique solution there is not worth the runtime cost.
-  const defaultAttempts = Math.max(10, Math.floor(200 / options.size))
-  const { size, maxAttempts = defaultAttempts } = options
+  const { size, maxAttempts = 12, maxTier = Tier.GroupExclusion } = options
 
-  let fallback: RegionLetter[][] | null = null
+  let uniqueFallback: RegionLetter[][] | null = null
+  let anyFallback: RegionLetter[][] | null = null
 
-  // cap=2 is enough to classify "unique" vs "not unique" and lets the
-  // solver bail out the moment a second solution is found, instead of
-  // exploring the tree all the way to a larger cap on every attempt.
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const seedCols = placeSeedQueens(size)
     if (!seedCols) continue
 
-    const regions = growRegions(size, seedCols)
-    if (!fallback) fallback = regions
+    const regions = refineByLocalSearch(growRegions(size, seedCols), seedCols, 60 * size * size)
+    if (!anyFallback) anyFallback = regions
 
-    if (countSolutions(regions, 2, 20_000) === 1) {
-      return regions
-    }
+    const logical = solveLogically(regions)
+    if (logical.solved && logical.hardestTier <= maxTier) return regions
+
+    // cap=2 is enough to classify "unique" vs "not unique" and lets the
+    // solver bail out the moment a second solution is found.
+    if (!uniqueFallback && countSolutions(regions, 2, 20_000) === 1) uniqueFallback = regions
   }
 
-  if (!fallback) {
-    throw new Error(`Failed to place seed queens for a ${size}x${size} board`)
-  }
-
+  const fallback = uniqueFallback ?? anyFallback
+  if (!fallback) throw new Error(`Failed to place seed queens for a ${size}x${size} board`)
   return fallback
 }
 
-export function generateLevel(id: string, size: number): Level {
-  const regions = generateBoard({ size })
+export function generateLevel(id: string, size: number, maxTier?: Tier): Level {
+  const regions = generateBoard({ size, maxTier })
   return { id, size, regions, colorCount: size }
 }

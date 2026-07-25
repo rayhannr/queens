@@ -1,0 +1,44 @@
+name: Generate level
+
+on:
+  schedule:
+    # Every Monday at 09:00 UTC.
+    - cron: "0 9 * * 1"
+  workflow_dispatch:
+    inputs:
+      count:
+        description: "Number of levels to generate"
+        required: false
+        default: "1"
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run generate:level -- ${{ github.event.inputs.count || '1' }}
+
+      - run: npx tsc --noEmit
+
+      - name: Commit new level
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- lib/levels/data.ts; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git add lib/levels/data.ts
+          git commit -m "Add generated level(s)"
+          git push
