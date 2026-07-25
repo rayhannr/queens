@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { useQueensGame, type Position } from '@/lib/game/useQueensGame'
+import { nextCellState, useQueensGame, type CellState, type Position } from '@/lib/game/useQueensGame'
 import type { Level } from '@/lib/generator/types'
 import { colorForRegion } from '@/lib/palette'
 import { Cell } from './Cell'
@@ -9,12 +9,40 @@ import { CrownBurstLayer, type Spawn } from './three/CrownBurst'
 import { WinConfetti } from './three/WinConfetti'
 
 export function Board({ level }: { level: Level }) {
-  const { board, queens, conflictedQueens, isFinished, onClickCell, reset } = useQueensGame(level.regions)
+  const { board, queens, conflictedQueens, isFinished, onClickCell, paintCell, reset } = useQueensGame(level.regions)
   const placed = queens.length
 
   const [spawns, setSpawns] = useState<Spawn[]>([])
   const [showLetters, setShowLetters] = useState(true)
   const prevQueensRef = useRef<Position[]>([])
+  const gridRef = useRef<HTMLDivElement>(null)
+  const dragRef = useRef<{ from: CellState; to: CellState } | null>(null)
+
+  const cellAt = (x: number, y: number) => {
+    const el = document.elementFromPoint(x, y) as HTMLElement | null
+    const cellEl = el?.closest('[data-row]') as HTMLElement | null
+    if (!cellEl) return null
+    return { row: Number(cellEl.dataset.row), col: Number(cellEl.dataset.col) }
+  }
+
+  const handlePointerDown = (e: React.PointerEvent, row: number, col: number) => {
+    const current = board[row][col]
+    dragRef.current = { from: current, to: nextCellState(current) }
+    onClickCell(row, col)
+    gridRef.current?.setPointerCapture(e.pointerId)
+  }
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!dragRef.current) return
+    const pos = cellAt(e.clientX, e.clientY)
+    if (!pos) return
+    const { from, to } = dragRef.current
+    paintCell(pos.row, pos.col, from, to)
+  }
+
+  const endDrag = () => {
+    dragRef.current = null
+  }
 
   useEffect(() => {
     const prev = prevQueensRef.current
@@ -74,6 +102,10 @@ export function Board({ level }: { level: Level }) {
 
       <div className="relative w-full max-w-[min(90vw,560px)]">
         <div
+          ref={gridRef}
+          onPointerMove={handlePointerMove}
+          onPointerUp={endDrag}
+          onPointerCancel={endDrag}
           className="grid gap-1 rounded-xl bg-black/5 p-2 shadow-inner dark:bg-white/5 sm:gap-1.5 sm:p-3"
           style={{ gridTemplateColumns: `repeat(${level.size}, minmax(0, 1fr))` }}
         >
@@ -81,11 +113,16 @@ export function Board({ level }: { level: Level }) {
             row.map((state, c) => (
               <Cell
                 key={`${r}-${c}`}
+                row={r}
+                col={c}
                 state={state}
                 region={colorForRegion(level.regions[r][c].charCodeAt(0) - 65)}
                 isConflicted={conflictedQueens.has(`${r}-${c}`)}
                 showLetters={showLetters}
-                onClick={() => onClickCell(r, c)}
+                onClick={e => {
+                  if (e.detail === 0) onClickCell(r, c)
+                }}
+                onPointerDown={e => handlePointerDown(e, r, c)}
               />
             ))
           )}

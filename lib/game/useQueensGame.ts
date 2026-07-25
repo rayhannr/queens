@@ -14,6 +14,12 @@ function emptyBoard(size: number): CellState[][] {
   return Array.from({ length: size }, () => Array.from({ length: size }, () => 'empty' as CellState))
 }
 
+export function nextCellState(current: CellState): CellState {
+  if (current === 'empty') return 'blocker'
+  if (current === 'blocker') return 'queen'
+  return 'empty'
+}
+
 interface GameState {
   board: CellState[][]
   queens: Position[]
@@ -58,16 +64,12 @@ export function useQueensGame(regions: RegionLetter[][]) {
   const onClickCell = useCallback((row: number, col: number) => {
     setState(({ board: prevBoard, queens: prevQueens }) => {
       const current = prevBoard[row][col]
-      let next: CellState = 'empty'
+      const next = nextCellState(current)
       let nextQueens = prevQueens
 
-      if (current === 'empty') {
-        next = 'blocker'
-      } else if (current === 'blocker') {
-        next = 'queen'
+      if (next === 'queen') {
         nextQueens = [...prevQueens, { row, col }]
       } else if (current === 'queen') {
-        next = 'empty'
         nextQueens = prevQueens.filter(q => q.row !== row || q.col !== col)
       }
 
@@ -77,9 +79,26 @@ export function useQueensGame(regions: RegionLetter[][]) {
     })
   }, [])
 
+  const paintCell = useCallback((row: number, col: number, from: CellState, to: CellState) => {
+    setState(({ board: prevBoard, queens: prevQueens }) => {
+      if (prevBoard[row][col] !== from) return { board: prevBoard, queens: prevQueens }
+
+      let nextQueens = prevQueens
+      if (to === 'queen') {
+        nextQueens = [...prevQueens, { row, col }]
+      } else if (from === 'queen') {
+        nextQueens = prevQueens.filter(q => q.row !== row || q.col !== col)
+      }
+
+      const nextBoard = prevBoard.map(r => r.slice())
+      nextBoard[row][col] = to
+      return { board: nextBoard, queens: nextQueens }
+    })
+  }, [])
+
   const reset = useCallback(() => {
     setState(emptyState(size))
   }, [size])
 
-  return { board, queens, conflictedQueens, isFinished, onClickCell, reset }
+  return { board, queens, conflictedQueens, isFinished, onClickCell, paintCell, reset }
 }

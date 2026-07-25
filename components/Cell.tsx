@@ -1,28 +1,35 @@
 'use client'
 
+import type React from 'react'
 import type { CellState } from '@/lib/game/useQueensGame'
 import type { RegionColor } from '@/lib/palette'
 
 interface CellProps {
+  row: number
+  col: number
   state: CellState
   region: RegionColor
   isConflicted: boolean
   showLetters: boolean
-  onClick: () => void
+  onClick: (e: React.MouseEvent) => void
+  onPointerDown: (e: React.PointerEvent) => void
 }
 
-export function Cell({ state, region, isConflicted, showLetters, onClick }: CellProps) {
+export function Cell({ row, col, state, region, isConflicted, showLetters, onClick, onPointerDown }: CellProps) {
   return (
     <button
       type="button"
+      data-row={row}
+      data-col={col}
       onClick={onClick}
-      className={`group relative flex aspect-square w-full select-none items-center justify-center rounded-md border transition-all duration-150 ${
+      onPointerDown={onPointerDown}
+      className={`group relative flex aspect-square w-full touch-none select-none items-center justify-center rounded-md border transition-all duration-150 ${
         isConflicted ? 'border-red-500 ring-2 ring-red-500/70' : 'border-black/10 dark:border-white/10'
       } hover:brightness-110 active:scale-95`}
       style={{ backgroundColor: region.bg }}
       aria-label={`Cell region ${region.letter}, ${state}`}
     >
-      {showLetters && state !== 'queen' && (
+      {showLetters && state === 'empty' && (
         <span
           className="pointer-events-none select-none text-[clamp(14px,4vw,26px)] font-medium leading-none"
           style={{ color: region.fg, textShadow: '0 1px 2px rgba(0,0,0,0.35)' }}
