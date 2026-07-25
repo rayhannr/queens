@@ -1,36 +1,54 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Queens
+
+A web version of the LinkedIn-style "Queens" puzzle: place one queen per row, column, and
+color region, with no two queens touching (even diagonally). Built with Next.js, React Three
+Fiber (for the ambient background/effects), and Tailwind CSS.
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) to see the level picker.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Project structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `app/` — Next.js App Router pages: the level picker (`app/page.tsx`) and the per-level
+  board (`app/level/[id]/page.tsx`).
+- `components/` — Board rendering (`Board`, `BoardClient`, `Cell`, `LevelPreview`) and
+  decorative `three/` components (ambient background, win confetti, crown burst).
+- `lib/game/useQueensGame.ts` — Client-side game state hook: cell cycling (empty → blocker →
+  queen), history/undo, and win detection.
+- `lib/generator/` — Procedural level generation:
+  - `generate.ts` — builds a board by seeding non-attacking queens, growing colored regions
+    around them, and validating the result.
+  - `logicalSolver.ts` — solves a board using only human-style deduction (no guessing); used
+    to guarantee generated levels are solvable without backtracking.
+  - `solver.ts` — brute-force solution counter, used to confirm a board has a unique solution.
+- `lib/levels/data.ts` — **auto-generated**, do not hand-edit. The list of shipped levels.
+- `lib/palette.ts` — region letter/color definitions.
+- `scripts/generate-levels.ts` — appends newly generated levels to `lib/levels/data.ts`. Run
+  with `npm run generate:level [count]`.
 
-## Learn More
+## Level generation
 
-To learn more about Next.js, take a look at the following resources:
+Levels are generated so that every board has a unique solution reachable by pure logical
+deduction — no trial-and-error required. A GitHub Actions workflow
+(`.github/workflows/generate-level.yml`) runs this on a schedule to drop new levels
+automatically; each run only appends, never rewrites existing levels.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Scripts
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `npm run dev` — start the dev server.
+- `npm run build` / `npm run start` — production build/serve.
+- `npm run lint` — lint with oxlint.
+- `npm run format` / `npm run format:check` — format with oxfmt.
+- `npm run generate:level [count]` — generate and append new levels.
 
-## Deploy on Vercel
+## Notes for contributors
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+This project pins a pre-release/breaking version of Next.js — see
+[AGENTS.md](AGENTS.md) before making framework-related changes, and read the docs under
+`node_modules/next/dist/docs/` rather than relying on prior Next.js knowledge.
