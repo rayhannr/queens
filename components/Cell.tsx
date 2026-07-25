@@ -24,7 +24,7 @@ export function Cell({ state, region, isConflicted, showLetters, onClick }: Cell
     >
       {showLetters && state !== 'queen' && (
         <span
-          className="pointer-events-none select-none text-[clamp(14px,4vw,26px)] font-bold leading-none"
+          className="pointer-events-none select-none text-[clamp(14px,4vw,26px)] font-medium leading-none"
           style={{ color: region.fg, textShadow: '0 1px 2px rgba(0,0,0,0.35)' }}
         >
           {region.letter}
@@ -41,7 +41,18 @@ export function Cell({ state, region, isConflicted, showLetters, onClick }: Cell
       )}
 
       {state === 'blocker' && (
-        <span className="h-1.5 w-1.5 rounded-full sm:h-2 sm:w-2" style={{ backgroundColor: region.fg, opacity: 0.55 }} />
+        <svg
+          className="pointer-events-none h-1/3 w-1/3"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke={region.fg}
+          strokeWidth={4}
+          strokeLinecap="round"
+          style={{ opacity: 0.55 }}
+          aria-hidden="true"
+        >
+          <path d="M5 5 L19 19 M19 5 L5 19" />
+        </svg>
       )}
     </button>
   )

@@ -39,6 +39,39 @@ export function Board({ level }: { level: Level }) {
 
   return (
     <div className="flex w-full flex-col items-center gap-5">
+      <div className="flex w-full max-w-[min(90vw,560px)] items-center justify-between text-sm text-zinc-600 dark:text-zinc-400">
+        <span>
+          {placed} / {level.size} queens placed
+        </span>
+        <div className="flex items-center gap-3">
+          <label className="flex items-center gap-2 text-xs font-medium">
+            <span>Letters</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={showLetters}
+              onClick={() => setShowLetters(v => !v)}
+              className={`relative h-5 w-9 shrink-0 rounded-full transition-colors duration-200 ${
+                showLetters ? 'bg-emerald-500' : 'bg-black/20 dark:bg-white/20'
+              }`}
+            >
+              <span
+                className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ease-out ${
+                  showLetters ? 'translate-x-4' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </label>
+          <button
+            type="button"
+            onClick={reset}
+            className="rounded-full border border-black/10 px-3 py-1 text-xs font-medium transition-colors hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10"
+          >
+            Reset
+          </button>
+        </div>
+      </div>
+
       <div className="relative w-full max-w-[min(90vw,560px)]">
         <div
           className="grid gap-1 rounded-xl bg-black/5 p-2 shadow-inner dark:bg-white/5 sm:gap-1.5 sm:p-3"
@@ -60,39 +93,6 @@ export function Board({ level }: { level: Level }) {
 
         <CrownBurstLayer spawns={spawns} size={level.size} onDone={id => setSpawns(s => s.filter(sp => sp.id !== id))} />
         <WinConfetti active={isFinished} />
-      </div>
-
-      <div className="flex w-full max-w-[min(90vw,560px)] items-center justify-between text-sm text-zinc-600 dark:text-zinc-400">
-        <span>
-          {placed} / {level.size} queens placed
-        </span>
-        <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 text-xs font-medium">
-            <span>Letters</span>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={showLetters}
-              onClick={() => setShowLetters(v => !v)}
-              className={`relative h-5 w-9 rounded-full transition-colors ${
-                showLetters ? 'bg-emerald-500' : 'bg-black/20 dark:bg-white/20'
-              }`}
-            >
-              <span
-                className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${
-                  showLetters ? 'translate-x-[18px]' : 'translate-x-0.5'
-                }`}
-              />
-            </button>
-          </label>
-          <button
-            type="button"
-            onClick={reset}
-            className="rounded-full border border-black/10 px-3 py-1 text-xs font-medium transition-colors hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10"
-          >
-            Reset
-          </button>
-        </div>
       </div>
 
       {isFinished && (
