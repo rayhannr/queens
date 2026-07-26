@@ -44,4 +44,9 @@ export const LEVELS: Level[] = [
     regions: [["A","A","A","A","A","A"],["B","B","B","A","A","A"],["B","B","C","A","A","A"],["B","B","C","A","A","D"],["B","E","E","D","D","D"],["B","B","E","E","F","F"]],
     hasUniqueSolution: true,
   },
+  {
+    id: "9",
+    regions: [["C","C","C","C","C","C","F","F","A"],["B","B","C","C","F","C","C","F","A"],["A","H","E","E","F","C","F","F","F"],["I","H","E","E","F","F","F","D","F"],["I","H","E","E","E","E","F","D","F"],["I","H","G","G","E","G","F","D","D"],["I","H","G","G","G","G","G","G","D"],["I","H","G","I","I","G","G","G","G"],["I","I","I","I","G","G","G","G","G"]],
+    hasUniqueSolution: true,
+  },
 ];
