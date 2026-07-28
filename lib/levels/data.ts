@@ -12,6 +12,16 @@ import level7 from './entries/7'
 import level8 from './entries/8'
 import level9 from './entries/9'
 import level10 from './entries/10'
+import level11 from './entries/11'
+import level12 from './entries/12'
+import level13 from './entries/13'
+import level14 from './entries/14'
+import level15 from './entries/15'
+import level16 from './entries/16'
+import level17 from './entries/17'
+import level18 from './entries/18'
+import level19 from './entries/19'
+import level20 from './entries/20'
 
 export const LEVELS: Level[] = [
   level1,
@@ -24,4 +34,14 @@ export const LEVELS: Level[] = [
   level8,
   level9,
   level10,
+  level11,
+  level12,
+  level13,
+  level14,
+  level15,
+  level16,
+  level17,
+  level18,
+  level19,
+  level20,
 ]
