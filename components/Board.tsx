@@ -222,7 +222,7 @@ export function Board({ level, levelNumber, prevId, nextId }: { level: Level; le
 
       <dialog
         ref={dialogRef}
-        onClick={e => {
+        onPointerDown={e => {
           if (e.target === dialogRef.current) dialogRef.current?.close()
         }}
         className="animate-win-in fixed inset-0 m-auto h-fit w-full max-w-xs rounded-2xl bg-white p-0 shadow-xl backdrop:bg-black/50 open:flex dark:bg-zinc-900"
