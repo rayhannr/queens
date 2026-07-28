@@ -29,8 +29,17 @@ function existingIds(): number[] {
 // might have fewer colors than an earlier one. Picking a fresh random size
 // each run (rather than ramping up) keeps that intentional, so a long-
 // running cron job doesn't drift toward "level N = size N" predictability.
+//
+// The distribution is skewed toward MIN_SIZE via SIZE_SKEW > 1: squashing a
+// uniform [0,1) sample with an exponent pulls it toward 0 (e.g. 0.7 ** 2 =
+// 0.49, 0.9 ** 2 = 0.81), so the biggest, hardest boards (15-18 colors) come
+// up rarer than small easy ones. Raise SIZE_SKEW for an even harder tilt
+// toward easy; 1 recovers a uniform distribution.
+const SIZE_SKEW = 1.8
+
 function randomSize(): number {
-  return MIN_SIZE + Math.floor(Math.random() * (MAX_SIZE - MIN_SIZE + 1))
+  const t = Math.random() ** SIZE_SKEW
+  return MIN_SIZE + Math.floor(t * (MAX_SIZE - MIN_SIZE + 1))
 }
 
 function entryFileSource(level: Level): string {
@@ -64,13 +73,13 @@ ${body}
   writeFileSync(dataPath, output, 'utf-8')
 }
 
-function runWorker(id: string, size: number): Promise<Level> {
+function runWorker(size: number): Promise<Level> {
   return new Promise((resolve, reject) => {
-    const child = fork(workerPath, [id, String(size)], { execArgv: ['--require', 'tsx/cjs'] })
+    const child = fork(workerPath, [String(size)], { execArgv: ['--require', 'tsx/cjs'] })
     child.on('message', (level: Level) => resolve(level))
     child.on('error', reject)
     child.on('exit', code => {
-      if (code !== 0) reject(new Error(`worker for level ${id} exited with code ${code}`))
+      if (code !== 0) reject(new Error(`worker for size ${size} exited with code ${code}`))
     })
   })
 }
@@ -79,15 +88,19 @@ async function main() {
   const count = Number(process.argv[2]) || 1
   const ids = existingIds()
   const startId = Math.max(0, ...ids) + 1
-  const tasks = Array.from({ length: count }, (_, i) => ({ id: String(startId + i), size: randomSize() }))
+  const sizes = Array.from({ length: count }, randomSize)
 
-  const concurrency = Math.max(1, Math.min(cpus().length, tasks.length))
+  // Ids are handed out in completion order, not dispatch order — whichever
+  // board finishes generating first claims the next available id.
+  const concurrency = Math.max(1, Math.min(cpus().length, sizes.length))
   let nextTask = 0
+  let assigned = 0
 
   async function worker() {
-    while (nextTask < tasks.length) {
-      const task = tasks[nextTask++]
-      const level = await runWorker(task.id, task.size)
+    while (nextTask < sizes.length) {
+      const size = sizes[nextTask++]
+      const level = await runWorker(size)
+      level.id = String(startId + assigned++)
       writeFileSync(join(entriesDir, `${level.id}.ts`), entryFileSource(level), 'utf-8')
       ids.push(Number(level.id))
       writeIndex(ids)

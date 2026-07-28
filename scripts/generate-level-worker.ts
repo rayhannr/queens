@@ -1,12 +1,13 @@
 // Run via child_process.fork by generate-levels.ts. Computes exactly one
-// level (CPU-bound backtracking + solver checks) and sends it back over IPC
-// — the parent process owns all filesystem writes so multiple workers can
-// run at once without racing on disk.
+// board (CPU-bound backtracking + solver checks) for the given size and
+// sends it back over IPC — the parent process assigns the real id (based
+// on completion order) and owns all filesystem writes, so multiple workers
+// can run at once without racing on disk or on id assignment.
 import { generateLevel } from '../lib/generator/generate'
 
-const id = process.argv[2]
-const size = Number(process.argv[3])
+const size = Number(process.argv[2])
 
-const level = generateLevel(id, size)
+// id is a placeholder — the parent overwrites it once the result arrives.
+const level = generateLevel('pending', size)
 
 process.send!(level)
