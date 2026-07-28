@@ -10,9 +10,6 @@ import { cpus } from 'node:os'
 import { join } from 'node:path'
 import type { Level } from '../lib/generator/types'
 
-const MIN_SIZE = 5
-const MAX_SIZE = 18
-
 const entriesDir = join(__dirname, '..', 'lib', 'levels', 'entries')
 const dataPath = join(__dirname, '..', 'lib', 'levels', 'data.ts')
 const workerPath = join(__dirname, 'generate-level-worker.ts')
@@ -30,16 +27,31 @@ function existingIds(): number[] {
 // each run (rather than ramping up) keeps that intentional, so a long-
 // running cron job doesn't drift toward "level N = size N" predictability.
 //
-// The distribution is skewed toward MIN_SIZE via SIZE_SKEW > 1: squashing a
-// uniform [0,1) sample with an exponent pulls it toward 0 (e.g. 0.7 ** 2 =
-// 0.49, 0.9 ** 2 = 0.81), so the biggest, hardest boards (15-18 colors) come
-// up rarer than small easy ones. Raise SIZE_SKEW for an even harder tilt
-// toward easy; 1 recovers a uniform distribution.
-const SIZE_SKEW = 1.8
+// Weighted rather than uniform, bell-shaped: both extremes are rare — the
+// trivially easy sizes (5-6) and the hardest ones (15-18) — with the bulk
+// of levels landing in a comfortable 8-11 middle. Bump a size's weight to
+// nudge its odds.
+const SIZE_WEIGHTS: Record<number, number> = {
+  5: 6,
+  6: 8,
+  7: 11,
+  8: 13,
+  9: 14,
+  10: 14,
+  11: 12,
+  12: 10,
+  13: 8,
+  14: 6,
+  15: 3,
+  16: 3,
+  17: 2,
+  18: 2
+}
+
+const SIZE_TABLE = Object.entries(SIZE_WEIGHTS).flatMap(([size, weight]) => Array(weight).fill(Number(size)))
 
 function randomSize(): number {
-  const t = Math.random() ** SIZE_SKEW
-  return MIN_SIZE + Math.floor(t * (MAX_SIZE - MIN_SIZE + 1))
+  return SIZE_TABLE[Math.floor(Math.random() * SIZE_TABLE.length)]
 }
 
 function entryFileSource(level: Level): string {
