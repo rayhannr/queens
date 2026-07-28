@@ -234,20 +234,68 @@ export function solveLogically(regions: RegionLetter[][]): LogicalSolveResult {
         }
 
         for (let k = 2; k <= Math.floor(size / 2); k++) {
-          for (const combo of combinations(units, k)) {
-            const union = new Set<number>()
-            for (const u of combo) for (const s of slotsByUnit.get(u)!) union.add(s)
-            if (union.size !== k) continue
+          // A unit whose own slots already outnumber k can never sit in a
+          // k-combo, since the combo's union contains that unit's slots.
+          const eligible = units.filter(u => slotsByUnit.get(u)!.size <= k)
+          if (eligible.length < k) continue
 
+          // The running union is tracked as a use-count per slot so units
+          // can be added and taken back off as the search walks the tree.
+          const combo: number[] = []
+          const slotUses = new Map<number, number>()
+          let unionSize = 0
+
+          const addUnit = (u: number) => {
+            for (const s of slotsByUnit.get(u)!) {
+              const used = slotUses.get(s) ?? 0
+              if (used === 0) unionSize++
+              slotUses.set(s, used + 1)
+            }
+          }
+
+          const dropUnit = (u: number) => {
+            for (const s of slotsByUnit.get(u)!) {
+              const used = slotUses.get(s)!
+              if (used === 1) {
+                slotUses.delete(s)
+                unionSize--
+              } else slotUses.set(s, used - 1)
+            }
+          }
+
+          const eliminate = (): boolean => {
+            const owners = new Set(combo)
             let changed = false
             for (let i = 0; i < cellCount; i++) {
-              if (candidate[i] && union.has(slotOf(i)) && !combo.includes(unitOf(i))) {
+              if (candidate[i] && slotUses.has(slotOf(i)) && !owners.has(unitOf(i))) {
                 candidate[i] = false
                 changed = true
               }
             }
-            if (changed) return true
+            return changed
           }
+
+          // Walks k-subsets in the same order the old exhaustive
+          // enumeration did, but abandons a branch the moment its union
+          // passes k — the union only grows as further units join, so such
+          // a branch can never return to exactly k. Every combo that used
+          // to reach the `union.size === k` test still reaches it here.
+          const search = (start: number): boolean => {
+            if (combo.length === k) return unionSize === k && eliminate()
+            for (let idx = start; idx <= eligible.length - (k - combo.length); idx++) {
+              const u = eligible[idx]
+              addUnit(u)
+              if (unionSize <= k) {
+                combo.push(u)
+                if (search(idx + 1)) return true
+                combo.pop()
+              }
+              dropUnit(u)
+            }
+            return false
+          }
+
+          if (search(0)) return true
         }
       }
     }
@@ -276,18 +324,4 @@ export function solveLogically(regions: RegionLetter[][]): LogicalSolveResult {
   }
 
   return { solved: true, hardestTier, advancedSteps, placed, candidatesLeft: countCandidates() }
-}
-
-function combinations(items: number[], k: number): number[][] {
-  const out: number[][] = []
-  const build = (start: number, acc: number[]) => {
-    if (acc.length === k) return void out.push([...acc])
-    for (let i = start; i < items.length; i++) {
-      acc.push(items[i])
-      build(i + 1, acc)
-      acc.pop()
-    }
-  }
-  build(0, [])
-  return out
 }

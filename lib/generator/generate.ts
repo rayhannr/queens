@@ -383,5 +383,11 @@ export function generateBoard(options: GenerateOptions): RegionLetter[][] {
 
 export function generateLevel(id: string, size: number, maxTier?: Tier): Level {
   const regions = generateBoard({ size, maxTier })
-  return { id, regions, hasUniqueSolution: hasUniqueSolution(regions) }
+  // Propagation closing the board is itself a proof of uniqueness: every
+  // elimination is sound, so if deduction alone pins all N queens, no other
+  // solution exists. Only the rare fallback board (which propagation could
+  // not finish) needs the backtracking count — and that search is node-
+  // capped, so on a large board it would otherwise report a false "not
+  // unique" purely from exhausting its budget.
+  return { id, regions, hasUniqueSolution: solveLogically(regions).solved || hasUniqueSolution(regions) }
 }

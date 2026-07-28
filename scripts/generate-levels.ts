@@ -6,11 +6,11 @@
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { generateLevel } from '../lib/generator/generate'
-import { LEVELS } from '../lib/levels/data'
 import type { Level } from '../lib/generator/types'
+import { LEVELS } from '../lib/levels/data'
 
-const MIN_SIZE = 6
-const MAX_SIZE = 11
+const MIN_SIZE = 5
+const MAX_SIZE = 18
 
 function nextId(existing: Level[]): number {
   const maxId = existing.reduce((max, l) => Math.max(max, Number(l.id) || 0), 0)
