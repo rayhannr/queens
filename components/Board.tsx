@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import { nextCellState, useQueensGame, type CellState, type Position } from '@/lib/game/useQueensGame'
 import type { Level } from '@/lib/generator/types'
 import { colorForRegion } from '@/lib/palette'
-import { recordCompletion } from '@/lib/progress'
+import { getLevelProgress, recordCompletion } from '@/lib/progress'
 import { formatDuration } from '@/lib/time'
 import { Cell } from './Cell'
 import { CrownBurstLayer, type Spawn } from './three/CrownBurst'
@@ -28,6 +28,11 @@ export function Board({ level, levelNumber, prevId, nextId }: { level: Level; le
   const runStartRef = useRef<number | null>(document.hidden ? null : performance.now())
   const [elapsedMs, setElapsedMs] = useState(0)
   const [result, setResult] = useState<{ timeMs: number; bestTimeMs: number } | null>(null)
+  const [bestTimeMs, setBestTimeMs] = useState<number | null>(null)
+
+  useEffect(() => {
+    setBestTimeMs(getLevelProgress(level.id)?.bestTimeMs ?? null)
+  }, [level.id])
 
   const currentElapsed = () => accumulatedRef.current + (runStartRef.current !== null ? performance.now() - runStartRef.current : 0)
 
@@ -61,7 +66,9 @@ export function Board({ level, levelNumber, prevId, nextId }: { level: Level; le
     }
     const timeMs = accumulatedRef.current
     setElapsedMs(timeMs)
-    setResult({ timeMs, bestTimeMs: recordCompletion(level.id, timeMs).bestTimeMs })
+    const newBestTimeMs = recordCompletion(level.id, timeMs).bestTimeMs
+    setResult({ timeMs, bestTimeMs: newBestTimeMs })
+    setBestTimeMs(newBestTimeMs)
   }, [isFinished, level.id])
 
   const handleReset = () => {
@@ -149,6 +156,11 @@ export function Board({ level, levelNumber, prevId, nextId }: { level: Level; le
           <span className="whitespace-nowrap font-mono text-xs tabular-nums text-zinc-500 dark:text-zinc-400">
             {formatDuration(elapsedMs)}
           </span>
+          {bestTimeMs !== null && (
+            <span className="flex items-center gap-1 whitespace-nowrap text-xs font-medium text-emerald-600 dark:text-emerald-400">
+              ✓ Best {formatDuration(bestTimeMs)}
+            </span>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <label className="flex items-center gap-2 text-xs font-medium">

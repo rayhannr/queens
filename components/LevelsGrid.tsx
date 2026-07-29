@@ -10,6 +10,32 @@ import { LevelPreview } from './LevelPreview'
 type CompletionFilter = 'all' | 'completed' | 'incomplete'
 type SolutionFilter = 'all' | 'unique' | 'multiple'
 
+const FILTERS_STORAGE_KEY = 'queens:levels-filters'
+
+interface StoredFilters {
+  completionFilter: CompletionFilter
+  solutionFilter: SolutionFilter
+}
+
+function readStoredFilters(): StoredFilters {
+  if (typeof window === 'undefined') return { completionFilter: 'all', solutionFilter: 'all' }
+  try {
+    const raw = window.localStorage.getItem(FILTERS_STORAGE_KEY)
+    if (!raw) return { completionFilter: 'all', solutionFilter: 'all' }
+    const parsed = JSON.parse(raw) as Partial<StoredFilters>
+    return {
+      completionFilter: parsed.completionFilter ?? 'all',
+      solutionFilter: parsed.solutionFilter ?? 'all'
+    }
+  } catch {
+    return { completionFilter: 'all', solutionFilter: 'all' }
+  }
+}
+
+function writeStoredFilters(filters: StoredFilters) {
+  window.localStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(filters))
+}
+
 function FilterGroup<T extends string>({
   options,
   value,
@@ -46,7 +72,14 @@ export function LevelsGrid({ levels }: { levels: Level[] }) {
 
   useEffect(() => {
     setProgress(getAllProgress())
+    const stored = readStoredFilters()
+    setCompletionFilter(stored.completionFilter)
+    setSolutionFilter(stored.solutionFilter)
   }, [])
+
+  useEffect(() => {
+    writeStoredFilters({ completionFilter, solutionFilter })
+  }, [completionFilter, solutionFilter])
 
   const filtered = useMemo(
     () =>
@@ -89,14 +122,14 @@ export function LevelsGrid({ levels }: { levels: Level[] }) {
       {filtered.length === 0 ? (
         <p className="mt-12 text-sm text-zinc-500 dark:text-zinc-400">No levels match these filters.</p>
       ) : (
-        <div className="mt-8 grid w-full max-w-4xl grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-5">
+        <div className="mt-8 grid w-full max-w-4xl grid-cols-3 gap-2 sm:grid-cols-4 sm:gap-4 md:grid-cols-5">
           {filtered.map(({ level, index }) => {
             const levelProgress = progress[level.id]
             return (
               <Link
                 key={level.id}
                 href={`/level/${level.id}`}
-                className="group relative flex flex-col gap-3 rounded-2xl border border-black/10 bg-white p-3 shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg dark:border-white/10 dark:bg-zinc-900"
+                className="group relative flex flex-col gap-1.5 rounded-xl border border-black/10 bg-white p-1.5 shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg dark:border-white/10 dark:bg-zinc-900 sm:gap-3 sm:rounded-2xl sm:p-3"
               >
                 {levelProgress && (
                   <span className="absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-xs text-white shadow-sm">
