@@ -29,8 +29,7 @@ export function Board({ level, levelNumber, prevId, nextId }: { level: Level; le
   const [elapsedMs, setElapsedMs] = useState(0)
   const [result, setResult] = useState<{ timeMs: number; bestTimeMs: number } | null>(null)
 
-  const currentElapsed = () =>
-    accumulatedRef.current + (runStartRef.current !== null ? performance.now() - runStartRef.current : 0)
+  const currentElapsed = () => accumulatedRef.current + (runStartRef.current !== null ? performance.now() - runStartRef.current : 0)
 
   useEffect(() => {
     if (isFinished) return

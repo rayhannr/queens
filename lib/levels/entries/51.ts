@@ -2,9 +2,17 @@
 import type { Level } from '../../generator/types'
 
 const level: Level = {
-  id: "51",
-  regions: [["A","A","A","A","A","A","A"],["A","A","A","A","A","A","B"],["A","A","A","C","B","B","B"],["A","D","D","C","C","C","B"],["D","D","F","C","C","E","E"],["D","D","F","E","E","E","E"],["D","E","E","E","G","G","G"]],
-  hasUniqueSolution: true,
+  id: '51',
+  regions: [
+    ['A', 'A', 'A', 'A', 'A', 'A', 'A'],
+    ['A', 'A', 'A', 'A', 'A', 'A', 'B'],
+    ['A', 'A', 'A', 'C', 'B', 'B', 'B'],
+    ['A', 'D', 'D', 'C', 'C', 'C', 'B'],
+    ['D', 'D', 'F', 'C', 'C', 'E', 'E'],
+    ['D', 'D', 'F', 'E', 'E', 'E', 'E'],
+    ['D', 'E', 'E', 'E', 'G', 'G', 'G']
+  ],
+  hasUniqueSolution: true
 }
 
 export default level

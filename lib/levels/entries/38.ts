@@ -2,9 +2,20 @@
 import type { Level } from '../../generator/types'
 
 const level: Level = {
-  id: "38",
-  regions: [["A","A","A","A","A","A","A","A","A","A"],["D","D","A","A","C","C","H","B","B","A"],["D","D","D","D","C","C","H","A","A","A"],["H","H","D","D","D","H","H","H","H","A"],["H","H","H","D","D","H","E","E","F","A"],["H","H","D","D","D","H","H","E","F","A"],["H","H","H","G","G","H","E","E","A","A"],["H","J","H","H","H","H","I","I","I","A"],["H","J","H","J","H","I","I","J","A","A"],["J","J","J","J","J","J","J","J","J","A"]],
-  hasUniqueSolution: true,
+  id: '38',
+  regions: [
+    ['A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A'],
+    ['D', 'D', 'A', 'A', 'C', 'C', 'H', 'B', 'B', 'A'],
+    ['D', 'D', 'D', 'D', 'C', 'C', 'H', 'A', 'A', 'A'],
+    ['H', 'H', 'D', 'D', 'D', 'H', 'H', 'H', 'H', 'A'],
+    ['H', 'H', 'H', 'D', 'D', 'H', 'E', 'E', 'F', 'A'],
+    ['H', 'H', 'D', 'D', 'D', 'H', 'H', 'E', 'F', 'A'],
+    ['H', 'H', 'H', 'G', 'G', 'H', 'E', 'E', 'A', 'A'],
+    ['H', 'J', 'H', 'H', 'H', 'H', 'I', 'I', 'I', 'A'],
+    ['H', 'J', 'H', 'J', 'H', 'I', 'I', 'J', 'A', 'A'],
+    ['J', 'J', 'J', 'J', 'J', 'J', 'J', 'J', 'J', 'A']
+  ],
+  hasUniqueSolution: true
 }
 
 export default level
