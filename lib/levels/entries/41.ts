@@ -4,12 +4,12 @@ import type { Level } from '../../generator/types'
 const level: Level = {
   id: '41',
   regions: [
-    ['B', 'B', 'B', 'B', 'A', 'A'],
-    ['B', 'E', 'E', 'B', 'D', 'D'],
-    ['E', 'E', 'C', 'B', 'B', 'D'],
-    ['E', 'E', 'C', 'E', 'E', 'D'],
-    ['E', 'E', 'E', 'E', 'E', 'E'],
-    ['E', 'E', 'F', 'F', 'F', 'E']
+    ['D', 'D', 'D', 'D', 'F', 'F'],
+    ['D', 'A', 'A', 'D', 'C', 'C'],
+    ['A', 'A', 'E', 'D', 'D', 'C'],
+    ['A', 'A', 'E', 'A', 'A', 'C'],
+    ['A', 'A', 'A', 'A', 'A', 'A'],
+    ['A', 'A', 'B', 'B', 'B', 'A']
   ],
   hasUniqueSolution: true
 }

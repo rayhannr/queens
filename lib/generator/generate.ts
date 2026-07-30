@@ -94,13 +94,20 @@ function growRegions(size: number, seedCols: number[]): RegionLetter[][] {
   const letters = REGION_LETTERS.slice(0, size)
   const regions: (RegionLetter | null)[][] = Array.from({ length: size }, () => new Array<RegionLetter | null>(size).fill(null))
 
+  // Letters are shuffled onto seed rows so a letter's position in the
+  // alphabet carries no information about where its region sits on the
+  // board — without this, region A (letters[0]) always seeded from row 0
+  // and the last letter always seeded from the last row, visibly biasing
+  // early letters toward the top and late letters toward the bottom.
+  const shuffledLetters = shuffle(letters)
+
   // Each region grows as a random walk from a stack of visited cells;
   // extending from the top of the stack (most recently placed cell)
   // is what produces the snake shape, backtracking down the stack
   // when a walk dead-ends.
-  const stacks: [number, number][][] = letters.map((_, i) => [[i, seedCols[i]]])
+  const stacks: [number, number][][] = shuffledLetters.map((_, i) => [[i, seedCols[i]]])
   seedCols.forEach((col, row) => {
-    regions[row][col] = letters[row]
+    regions[row][col] = shuffledLetters[row]
   })
 
   let remaining = size * size - size
@@ -117,7 +124,7 @@ function growRegions(size: number, seedCols: number[]): RegionLetter[][] {
   // advancing in lockstep and tends back toward smooth, unconstraining
   // blobs even with a random-walk shape.
   while (remaining > 0) {
-    const live = letters.map((_, i) => i).filter(i => stacks[i].length > 0)
+    const live = shuffledLetters.map((_, i) => i).filter(i => stacks[i].length > 0)
     if (live.length === 0) break
 
     // Prefer regions still under their target; once every hungry region
@@ -135,7 +142,7 @@ function growRegions(size: number, seedCols: number[]): RegionLetter[][] {
         continue
       }
       const [nr, nc] = options[randInt(options.length)]
-      regions[nr][nc] = letters[regionIdx]
+      regions[nr][nc] = shuffledLetters[regionIdx]
       stack.push([nr, nc])
       counts[regionIdx]++
       remaining--
@@ -145,7 +152,7 @@ function growRegions(size: number, seedCols: number[]): RegionLetter[][] {
     // All region walks may dead-end simultaneously, leaving isolated
     // pockets of unassigned cells. Seed a fresh walk for whichever
     // region borders the pocket so growth can resume.
-    if (remaining > 0 && letters.every((_, i) => stacks[i].length === 0)) {
+    if (remaining > 0 && shuffledLetters.every((_, i) => stacks[i].length === 0)) {
       outer: for (let r = 0; r < size; r++) {
         for (let c = 0; c < size; c++) {
           if (regions[r][c] !== null) continue
@@ -155,7 +162,7 @@ function growRegions(size: number, seedCols: number[]): RegionLetter[][] {
             if (nr < 0 || nr >= size || nc < 0 || nc >= size) continue
             const neighborRegion = regions[nr][nc]
             if (neighborRegion !== null) {
-              const regionIdx = letters.indexOf(neighborRegion)
+              const regionIdx = shuffledLetters.indexOf(neighborRegion)
               regions[r][c] = neighborRegion
               stacks[regionIdx].push([r, c])
               counts[regionIdx]++

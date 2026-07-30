@@ -4,14 +4,14 @@ import type { Level } from '../../generator/types'
 const level: Level = {
   id: '36',
   regions: [
-    ['B', 'C', 'C', 'C', 'A', 'E', 'E', 'E'],
-    ['B', 'B', 'B', 'C', 'A', 'A', 'A', 'E'],
-    ['B', 'C', 'C', 'C', 'C', 'C', 'A', 'E'],
-    ['D', 'D', 'H', 'H', 'E', 'E', 'E', 'E'],
-    ['G', 'G', 'H', 'E', 'E', 'E', 'F', 'F'],
-    ['G', 'G', 'H', 'H', 'E', 'E', 'E', 'F'],
-    ['G', 'H', 'H', 'H', 'H', 'F', 'F', 'F'],
-    ['G', 'H', 'H', 'H', 'H', 'H', 'H', 'F']
+    ['C', 'F', 'F', 'F', 'B', 'E', 'E', 'E'],
+    ['C', 'C', 'C', 'F', 'B', 'B', 'B', 'E'],
+    ['C', 'F', 'F', 'F', 'F', 'F', 'B', 'E'],
+    ['G', 'G', 'D', 'D', 'E', 'E', 'E', 'E'],
+    ['H', 'H', 'D', 'E', 'E', 'E', 'A', 'A'],
+    ['H', 'H', 'D', 'D', 'E', 'E', 'E', 'A'],
+    ['H', 'D', 'D', 'D', 'D', 'A', 'A', 'A'],
+    ['H', 'D', 'D', 'D', 'D', 'D', 'D', 'A']
   ],
   hasUniqueSolution: true
 }
