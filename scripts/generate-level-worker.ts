@@ -6,8 +6,9 @@
 import { generateLevel } from '../lib/generator/generate'
 
 const size = Number(process.argv[2])
+const allowMultiSolutionProbability = Number(process.argv[3]) || 0
 
 // id is a placeholder — the parent overwrites it once the result arrives.
-const level = generateLevel('pending', size)
+const level = generateLevel('pending', size, undefined, allowMultiSolutionProbability)
 
 process.send!(level)

@@ -1,4 +1,4 @@
-// Run with: npx tsx scripts/generate-levels.ts [count]
+// Run with: npx tsx scripts/generate-levels.ts [count] [allowMultiSolutionProbability]
 // Generates `count` new levels in parallel (one child process per level,
 // capped at the machine's core count) and writes each one to its own file
 // under lib/levels/entries/ as soon as it finishes — no waiting for the
@@ -85,9 +85,11 @@ ${body}
   writeFileSync(dataPath, output, 'utf-8')
 }
 
-function runWorker(size: number): Promise<Level> {
+function runWorker(size: number, allowMultiSolutionProbability: number): Promise<Level> {
   return new Promise((resolve, reject) => {
-    const child = fork(workerPath, [String(size)], { execArgv: ['--require', 'tsx/cjs'] })
+    const child = fork(workerPath, [String(size), String(allowMultiSolutionProbability)], {
+      execArgv: ['--require', 'tsx/cjs']
+    })
     child.on('message', (level: Level) => resolve(level))
     child.on('error', reject)
     child.on('exit', code => {
@@ -98,6 +100,7 @@ function runWorker(size: number): Promise<Level> {
 
 async function main() {
   const count = Number(process.argv[2]) || 1
+  const allowMultiSolutionProbability = Number(process.argv[3]) || 0
   const ids = existingIds()
   const startId = Math.max(0, ...ids) + 1
   const sizes = Array.from({ length: count }, randomSize)
@@ -111,7 +114,7 @@ async function main() {
   async function worker() {
     while (nextTask < sizes.length) {
       const size = sizes[nextTask++]
-      const level = await runWorker(size)
+      const level = await runWorker(size, allowMultiSolutionProbability)
       level.id = String(startId + assigned++)
       writeFileSync(join(entriesDir, `${level.id}.ts`), entryFileSource(level), 'utf-8')
       ids.push(Number(level.id))

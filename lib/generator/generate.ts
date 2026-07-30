@@ -334,6 +334,14 @@ export interface GenerateOptions {
    * Defaults to allowing everything solvable without guessing.
    */
   maxTier?: Tier
+  /**
+   * Chance [0, 1] that this call deliberately skips the uniqueness gate and
+   * returns a board straight out of region growth, which may have more than
+   * one solution. Default 0 preserves the normal guarantee. Intended for
+   * occasional variety (e.g. a low-probability flag on the generation
+   * script), not for routine use.
+   */
+  allowMultiSolutionProbability?: number
 }
 
 /**
@@ -353,7 +361,9 @@ export interface GenerateOptions {
  * an unattended job always gets a playable result.
  */
 export function generateBoard(options: GenerateOptions): RegionLetter[][] {
-  const { size, maxAttempts = 12, maxTier = Tier.GroupExclusion } = options
+  const { size, maxAttempts = 12, maxTier = Tier.GroupExclusion, allowMultiSolutionProbability = 0 } = options
+
+  const skipUniquenessGate = Math.random() < allowMultiSolutionProbability
 
   let uniqueFallback: RegionLetter[][] | null = null
   let anyFallback: RegionLetter[][] | null = null
@@ -361,6 +371,14 @@ export function generateBoard(options: GenerateOptions): RegionLetter[][] {
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const seedCols = placeSeedQueens(size)
     if (!seedCols) continue
+
+    // Deliberately bypass local-search refinement as well as the
+    // deduction/uniqueness gate below: refinement hill-climbs toward
+    // deduction-solvability, which (see the comment above) implies
+    // uniqueness — so skipping the gate alone still produced a unique
+    // board almost every time at small/medium sizes. Returning the raw
+    // grown board is what actually lets multiple solutions through.
+    if (skipUniquenessGate) return growRegions(size, seedCols)
 
     const regions = refineByLocalSearch(growRegions(size, seedCols), seedCols, 60 * size * size)
     if (!anyFallback) anyFallback = regions
@@ -388,8 +406,8 @@ export function generateBoard(options: GenerateOptions): RegionLetter[][] {
   return fallback
 }
 
-export function generateLevel(id: string, size: number, maxTier?: Tier): Level {
-  const regions = generateBoard({ size, maxTier })
+export function generateLevel(id: string, size: number, maxTier?: Tier, allowMultiSolutionProbability?: number): Level {
+  const regions = generateBoard({ size, maxTier, allowMultiSolutionProbability })
   // Propagation closing the board is itself a proof of uniqueness: every
   // elimination is sound, so if deduction alone pins all N queens, no other
   // solution exists. Only the rare fallback board (which propagation could

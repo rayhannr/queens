@@ -28,7 +28,7 @@ jobs:
       - run: npm ci
 
       - id: generate
-        run: npm run generate:level -- ${{ github.event.inputs.count || '1' }}
+        run: npm run generate:level -- ${{ github.event.inputs.count || '1' }} 0.1
 
       - run: npx tsc --noEmit
 
