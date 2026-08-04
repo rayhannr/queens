@@ -71,6 +71,37 @@ import level66 from './entries/66'
 import level67 from './entries/67'
 import level68 from './entries/68'
 import level69 from './entries/69'
+import level70 from './entries/70'
+import level71 from './entries/71'
+import level72 from './entries/72'
+import level73 from './entries/73'
+import level74 from './entries/74'
+import level75 from './entries/75'
+import level76 from './entries/76'
+import level77 from './entries/77'
+import level78 from './entries/78'
+import level79 from './entries/79'
+import level80 from './entries/80'
+import level81 from './entries/81'
+import level82 from './entries/82'
+import level83 from './entries/83'
+import level84 from './entries/84'
+import level85 from './entries/85'
+import level86 from './entries/86'
+import level87 from './entries/87'
+import level88 from './entries/88'
+import level89 from './entries/89'
+import level90 from './entries/90'
+import level91 from './entries/91'
+import level92 from './entries/92'
+import level93 from './entries/93'
+import level94 from './entries/94'
+import level95 from './entries/95'
+import level96 from './entries/96'
+import level97 from './entries/97'
+import level98 from './entries/98'
+import level99 from './entries/99'
+import level100 from './entries/100'
 
 export const LEVELS: Level[] = [
   level1,
@@ -142,4 +173,35 @@ export const LEVELS: Level[] = [
   level67,
   level68,
   level69,
+  level70,
+  level71,
+  level72,
+  level73,
+  level74,
+  level75,
+  level76,
+  level77,
+  level78,
+  level79,
+  level80,
+  level81,
+  level82,
+  level83,
+  level84,
+  level85,
+  level86,
+  level87,
+  level88,
+  level89,
+  level90,
+  level91,
+  level92,
+  level93,
+  level94,
+  level95,
+  level96,
+  level97,
+  level98,
+  level99,
+  level100,
 ]
