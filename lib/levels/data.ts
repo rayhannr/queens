@@ -70,6 +70,7 @@ import level65 from './entries/65'
 import level66 from './entries/66'
 import level67 from './entries/67'
 import level68 from './entries/68'
+import level69 from './entries/69'
 
 export const LEVELS: Level[] = [
   level1,
@@ -140,4 +141,5 @@ export const LEVELS: Level[] = [
   level66,
   level67,
   level68,
+  level69,
 ]
