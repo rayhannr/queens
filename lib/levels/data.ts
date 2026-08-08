@@ -109,6 +109,9 @@ import level104 from './entries/104'
 import level105 from './entries/105'
 import level106 from './entries/106'
 import level107 from './entries/107'
+import level108 from './entries/108'
+import level109 from './entries/109'
+import level110 from './entries/110'
 
 export const LEVELS: Level[] = [
   level1,
@@ -218,4 +221,7 @@ export const LEVELS: Level[] = [
   level105,
   level106,
   level107,
+  level108,
+  level109,
+  level110,
 ]
