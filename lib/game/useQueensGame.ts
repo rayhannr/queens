@@ -38,11 +38,6 @@ function emptyState(size: number): GameState {
 
 export function useQueensGame(regions: RegionLetter[][]) {
   const size = regions.length
-  // board and queens are derived together from a single click, so they
-  // live in one state update — kept as two separate useState calls (with
-  // setQueens invoked as a side effect from inside the setBoard updater),
-  // the updater stopped being pure and React StrictMode's dev-mode double
-  // invocation of updaters silently double-added queens on every click.
   const [{ board, queens, history }, setState] = useState<GameState>(() => emptyState(size))
 
   const conflictedQueens = useMemo(() => {
