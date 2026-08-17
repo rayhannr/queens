@@ -236,6 +236,7 @@ import level231 from './entries/231'
 import level232 from './entries/232'
 import level233 from './entries/233'
 import level234 from './entries/234'
+import level235 from './entries/235'
 
 export const LEVELS: Level[] = [
   level1,
@@ -472,4 +473,5 @@ export const LEVELS: Level[] = [
   level232,
   level233,
   level234,
+  level235,
 ]
