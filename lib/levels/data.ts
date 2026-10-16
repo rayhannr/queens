@@ -459,6 +459,7 @@ import level454 from './entries/454'
 import level455 from './entries/455'
 import level456 from './entries/456'
 import level457 from './entries/457'
+import level458 from './entries/458'
 
 export const LEVELS: Level[] = [
   level1,
@@ -918,4 +919,5 @@ export const LEVELS: Level[] = [
   level455,
   level456,
   level457,
+  level458,
 ]
