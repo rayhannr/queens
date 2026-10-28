@@ -4,12 +4,7 @@ import {
   usePublicPlayerRecordApi_GetRecord_ByUserId_ByKey,
   usePublicPlayerRecordApi_UpdateRecord_ByUserId_ByKeyMutation
 } from '@accelbyte/sdk-cloudsave/react-query'
-import {
-  Key_Users,
-  useOAuth20Api_PostTokenOauth_ByPlatformIdMutation_v3,
-  useOAuth20ExtensionApi_CreateLogoutMutation_v3,
-  useUsersApi_GetUsersMe_v3
-} from '@accelbyte/sdk-iam/react-query'
+import { useOAuth20Api_PostTokenOauth_ByPlatformIdMutation_v3 } from '@accelbyte/sdk-iam/react-query'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { createLoginSdk, createUserSdk, PROGRESS_KEY } from '@/lib/ags/client'
@@ -41,9 +36,10 @@ const isNotFound = (error: unknown) => (error as { response?: { status?: number 
 
 function ProgressStateProvider({ children }: { children: React.ReactNode }) {
   const [progress, setProgress] = useState<ProgressMap>({})
+  const [userId, setUserId] = useState<string | null>(null)
   const progressRef = useRef<ProgressMap>({})
-  // consumed once the account's record has loaded; accountWins is set for a fresh sign-in
-  const pendingSyncRef = useRef<{ accountWins: boolean } | null>({ accountWins: false })
+  // consumed once the account's record has loaded after a sign-in
+  const pendingSyncRef = useRef(false)
 
   const applyProgress = useCallback((map: ProgressMap) => {
     progressRef.current = map
@@ -51,18 +47,16 @@ function ProgressStateProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const endSession = useCallback(() => {
-    queryClient.setQueryData([Key_Users.UsersMe_v3, {}], null)
-    pendingSyncRef.current = null
+    setUserId(null)
+    pendingSyncRef.current = false
     applyProgress(getLocalProgress())
   }, [applyProgress])
 
   const loginSdk = useMemo(createLoginSdk, [])
-  const sdk = useMemo(() => createUserSdk(endSession), [endSession])
+  const user = useMemo(() => createUserSdk(endSession), [endSession])
+  const sdk = user.sdk
 
   const { mutateAsync: googleLogin } = useOAuth20Api_PostTokenOauth_ByPlatformIdMutation_v3(loginSdk)
-  const { mutateAsync: logout } = useOAuth20ExtensionApi_CreateLogoutMutation_v3(sdk)
-  const { data: user, refetch: refetchUser } = useUsersApi_GetUsersMe_v3(sdk, {}, { retry: false, staleTime: Infinity })
-  const userId = user?.userId ?? null
 
   const record = usePublicPlayerRecordApi_GetRecord_ByUserId_ByKey(
     sdk,
@@ -73,47 +67,43 @@ function ProgressStateProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => applyProgress(getLocalProgress()), [applyProgress])
 
-  // On a fresh sign-in the account's progress wins over this device's; otherwise the two are merged.
-  // Local progress is only cleared once AGS has accepted the upload.
+  // After sign-in the account's progress wins over this device's; local progress is only uploaded
+  // (and then cleared) when the account has none.
   useEffect(() => {
-    const pending = pendingSyncRef.current
-    if (!userId || !pending) return
+    if (!userId || !pendingSyncRef.current) return
     const missing = record.isError && isNotFound(record.error)
     if (!record.isSuccess && !missing) return
-    pendingSyncRef.current = null
+    pendingSyncRef.current = false
 
     const remote = ((record.data?.value as { progress?: ProgressMap } | undefined)?.progress ?? {}) as ProgressMap
     const local = getLocalProgress()
 
-    if (pending.accountWins && hasEntries(remote)) {
+    if (hasEntries(remote)) {
       clearLocalProgress()
       applyProgress(remote)
       return
     }
-    if (!hasEntries(local)) {
-      applyProgress(remote)
-      return
-    }
-    const merged = mergeProgress(remote, local)
-    applyProgress(merged)
-    saveRecord({ userId, key: PROGRESS_KEY, data: { progress: merged } })
+    if (!hasEntries(local)) return
+    applyProgress(local)
+    saveRecord({ userId, key: PROGRESS_KEY, data: { progress: local } })
       .then(clearLocalProgress)
       .catch(() => {})
   }, [userId, record.isSuccess, record.isError, record.error, record.data, applyProgress, saveRecord])
 
   const signInWithGoogle = useCallback(
     async (idToken: string) => {
-      await googleLogin({ platformId: 'google', data: { platform_token: idToken } })
-      pendingSyncRef.current = { accountWins: true }
-      const result = await refetchUser()
-      if (!result.isSuccess) throw result.error
+      const token = await googleLogin({ platformId: 'google', data: { platform_token: idToken } })
+      user.signIn(token)
+      pendingSyncRef.current = true
+      setUserId(token.user_id!)
     },
-    [googleLogin, refetchUser]
+    [googleLogin, user]
   )
 
   const signOut = useCallback(() => {
-    logout({}).finally(endSession)
-  }, [logout, endSession])
+    user.signOut()
+    endSession()
+  }, [user, endSession])
 
   const recordCompletion = useCallback(
     (id: string, timeMs: number): LevelProgress => {
