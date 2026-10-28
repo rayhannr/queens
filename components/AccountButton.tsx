@@ -9,8 +9,10 @@ declare global {
     google?: {
       accounts: {
         id: {
-          initialize: (config: { client_id: string; callback: (response: { credential: string }) => void }) => void
+          initialize: (config: { client_id: string; auto_select?: boolean; callback: (response: { credential: string }) => void }) => void
           renderButton: (parent: HTMLElement, options: { theme: string; size: string }) => void
+          prompt: () => void
+          disableAutoSelect: () => void
         }
       }
     }
@@ -35,11 +37,13 @@ export function AccountButton() {
     return () => document.removeEventListener('mousedown', onOutsideClick)
   }, [open])
 
+  // sign a returning Google user back in on load, since no token survives a reload
   useEffect(() => {
-    if (!open || signedIn || !googleReady || !googleButtonRef.current || !window.google) return
+    if (!googleReady || !window.google) return
 
     window.google.accounts.id.initialize({
       client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
+      auto_select: true,
       callback: async response => {
         setError(null)
         setBusy(true)
@@ -53,8 +57,13 @@ export function AccountButton() {
         }
       }
     })
+    window.google.accounts.id.prompt()
+  }, [googleReady, signInWithGoogle])
+
+  useEffect(() => {
+    if (!open || signedIn || !googleReady || !googleButtonRef.current || !window.google) return
     window.google.accounts.id.renderButton(googleButtonRef.current, { theme: 'outline', size: 'medium' })
-  }, [open, signedIn, googleReady, signInWithGoogle])
+  }, [open, signedIn, googleReady])
 
   return (
     <div ref={containerRef} className="fixed right-4 top-4 z-20">
@@ -81,6 +90,7 @@ export function AccountButton() {
               <button
                 type="button"
                 onClick={() => {
+                  window.google?.accounts.id.disableAutoSelect()
                   signOut()
                   setOpen(false)
                 }}
