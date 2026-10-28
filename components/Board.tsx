@@ -5,9 +5,9 @@ import { useEffect, useRef, useState } from 'react'
 import { nextCellState, useQueensGame, type CellState, type Position } from '@/lib/game/useQueensGame'
 import type { Level } from '@/lib/generator/types'
 import { colorForRegion } from '@/lib/palette'
-import { getLevelProgress, recordCompletion } from '@/lib/progress'
 import { formatDuration } from '@/lib/time'
 import { Cell } from './Cell'
+import { useProgress } from './ProgressProvider'
 import { CrownBurstLayer, type Spawn } from './three/CrownBurst'
 import { WinConfetti } from './three/WinConfetti'
 
@@ -28,11 +28,8 @@ export function Board({ level, levelNumber, prevId, nextId }: { level: Level; le
   const runStartRef = useRef<number | null>(document.hidden ? null : performance.now())
   const [elapsedMs, setElapsedMs] = useState(0)
   const [result, setResult] = useState<{ timeMs: number; bestTimeMs: number } | null>(null)
-  const [bestTimeMs, setBestTimeMs] = useState<number | null>(null)
-
-  useEffect(() => {
-    setBestTimeMs(getLevelProgress(level.id)?.bestTimeMs ?? null)
-  }, [level.id])
+  const { progress, recordCompletion } = useProgress()
+  const bestTimeMs = progress[level.id]?.bestTimeMs ?? null
 
   const currentElapsed = () => accumulatedRef.current + (runStartRef.current !== null ? performance.now() - runStartRef.current : 0)
 
@@ -68,8 +65,7 @@ export function Board({ level, levelNumber, prevId, nextId }: { level: Level; le
     setElapsedMs(timeMs)
     const newBestTimeMs = recordCompletion(level.id, timeMs).bestTimeMs
     setResult({ timeMs, bestTimeMs: newBestTimeMs })
-    setBestTimeMs(newBestTimeMs)
-  }, [isFinished, level.id])
+  }, [isFinished, level.id, recordCompletion])
 
   const handleReset = () => {
     reset()

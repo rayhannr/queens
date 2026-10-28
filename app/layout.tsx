@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
+import { AccountButton } from '@/components/AccountButton'
+import { ProgressProvider } from '@/components/ProgressProvider'
 import { AmbientBackgroundClient } from '@/components/three/AmbientBackgroundClient'
 import './globals.css'
 
@@ -27,7 +29,10 @@ export default function RootLayout({
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         <AmbientBackgroundClient />
-        {children}
+        <ProgressProvider>
+          <AccountButton />
+          {children}
+        </ProgressProvider>
       </body>
     </html>
   )

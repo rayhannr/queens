@@ -3,9 +3,9 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import type { Level } from '@/lib/generator/types'
-import { getAllProgress, type ProgressMap } from '@/lib/progress'
 import { formatDuration } from '@/lib/time'
 import { LevelPreview } from './LevelPreview'
+import { useProgress } from './ProgressProvider'
 
 type CompletionFilter = 'all' | 'completed' | 'incomplete'
 type SolutionFilter = 'all' | 'unique' | 'multiple'
@@ -66,12 +66,11 @@ function FilterGroup<T extends string>({
 }
 
 export function LevelsGrid({ levels }: { levels: Level[] }) {
-  const [progress, setProgress] = useState<ProgressMap>({})
+  const { progress } = useProgress()
   const [completionFilter, setCompletionFilter] = useState<CompletionFilter>('all')
   const [solutionFilter, setSolutionFilter] = useState<SolutionFilter>('all')
 
   useEffect(() => {
-    setProgress(getAllProgress())
     const stored = readStoredFilters()
     setCompletionFilter(stored.completionFilter)
     setSolutionFilter(stored.solutionFilter)

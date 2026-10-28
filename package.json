@@ -12,23 +12,27 @@
     "format:check": "oxfmt --check"
   },
   "dependencies": {
-    "@react-three/drei": "^10.7.7",
-    "@react-three/fiber": "^9.6.1",
-    "@types/three": "^0.185.1",
+    "@accelbyte/sdk": "4.3.2",
+    "@accelbyte/sdk-cloudsave": "6.3.5",
+    "@accelbyte/sdk-iam": "6.3.5",
+    "@react-three/drei": "10.7.7",
+    "@react-three/fiber": "9.6.1",
+    "@tanstack/react-query": "^5.101.2",
+    "@types/three": "0.185.1",
     "next": "16.2.11",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "three": "^0.185.1"
+    "three": "0.185.1"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "oxfmt": "^0.60.0",
-    "oxlint": "^1.75.0",
-    "tailwindcss": "^4",
-    "tsx": "^4.23.1",
-    "typescript": "^5"
+    "@tailwindcss/postcss": "4",
+    "@types/node": "20",
+    "@types/react": "19",
+    "@types/react-dom": "19",
+    "oxfmt": "0.60.0",
+    "oxlint": "1.75.0",
+    "tailwindcss": "4",
+    "tsx": "4.23.1",
+    "typescript": "5"
   }
 }
