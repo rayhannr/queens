@@ -4,10 +4,24 @@ import {
   usePublicPlayerRecordApi_GetRecord_ByUserId_ByKey,
   usePublicPlayerRecordApi_UpdateRecord_ByUserId_ByKeyMutation
 } from '@accelbyte/sdk-cloudsave/react-query'
-import { useOAuth20Api_PostTokenOauth_ByPlatformIdMutation_v3 } from '@accelbyte/sdk-iam/react-query'
+import {
+  useOAuth20Api_PostTokenOauth_ByPlatformIdMutation_v3,
+  useUsersApi_GetPlatforms_ByUserId_v3,
+  useUsersApi_PostUserMePlatform_ByPlatformIdMutation_v3
+} from '@accelbyte/sdk-iam/react-query'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { createLoginSdk, createUserSdk, PROGRESS_KEY } from '@/lib/ags/client'
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
+import {
+  clearGoogleDeviceId,
+  getActiveDeviceId,
+  getGoogleDeviceId,
+  getOrLinkDeviceId,
+  isGoogleNotLinked,
+  isNotFound,
+  resetDeviceId,
+  setGoogleDeviceId
+} from '@/lib/ags/account'
+import { createLoginSdk, createTokenSdk, createUserSdk, PROGRESS_KEY } from '@/lib/ags/client'
 import {
   clearLocalProgress,
   getLocalProgress,
@@ -18,97 +32,134 @@ import {
   type ProgressMap
 } from '@/lib/progress'
 
+export type ConnectionStatus = 'connecting' | 'online' | 'offline'
+
+/** linked: Google now points at this account; switched: this browser moved to the Google account's. */
+export type GoogleOutcome = 'linked' | 'switched'
+
 interface ProgressState {
   progress: ProgressMap
-  signedIn: boolean
-  signInWithGoogle: (idToken: string) => Promise<void>
+  status: ConnectionStatus
+  googleLinked: boolean
+  signInWithGoogle: (idToken: string) => Promise<GoogleOutcome>
   signOut: () => void
   recordCompletion: (id: string, timeMs: number) => LevelProgress
 }
 
 const queryClient = new QueryClient()
+const loginSdk = createLoginSdk()
 
 const ProgressContext = createContext<ProgressState | null>(null)
 
-const hasEntries = (map: ProgressMap) => Object.keys(map).length > 0
-
-const isNotFound = (error: unknown) => (error as { response?: { status?: number } } | null)?.response?.status === 404
+const improvesOn = (merged: ProgressMap, base: ProgressMap) =>
+  Object.entries(merged).some(([id, entry]) => base[id]?.bestTimeMs !== entry.bestTimeMs)
 
 function ProgressStateProvider({ children }: { children: React.ReactNode }) {
   const [progress, setProgress] = useState<ProgressMap>({})
   const [userId, setUserId] = useState<string | null>(null)
-  const progressRef = useRef<ProgressMap>({})
-  // consumed once the account's record has loaded after a sign-in
-  const pendingSyncRef = useRef(false)
+  const [loginFailed, setLoginFailed] = useState(false)
+  // progress to merge into the account's record once it has loaded after a login; set alongside
+  // userId, whose change is what re-runs the sync effect
+  const pendingSyncRef = useRef<ProgressMap | null>(null)
+  // an expired session drops the user, which logs in again with the device ID below
+  const [user] = useState(() => createUserSdk(() => setUserId(null)))
 
-  const applyProgress = useCallback((map: ProgressMap) => {
-    progressRef.current = map
-    setProgress(map)
-  }, [])
-
-  const endSession = useCallback(() => {
-    setUserId(null)
-    pendingSyncRef.current = false
-    applyProgress(getLocalProgress())
-  }, [applyProgress])
-
-  const loginSdk = useMemo(createLoginSdk, [])
-  const user = useMemo(() => createUserSdk(endSession), [endSession])
-  const sdk = user.sdk
-
-  const { mutateAsync: googleLogin } = useOAuth20Api_PostTokenOauth_ByPlatformIdMutation_v3(loginSdk)
+  const { mutateAsync: grantToken } = useOAuth20Api_PostTokenOauth_ByPlatformIdMutation_v3(loginSdk)
+  const { mutateAsync: linkPlatform } = useUsersApi_PostUserMePlatform_ByPlatformIdMutation_v3(user.sdk)
+  const { mutateAsync: saveRecord } = usePublicPlayerRecordApi_UpdateRecord_ByUserId_ByKeyMutation(user.sdk)
 
   const record = usePublicPlayerRecordApi_GetRecord_ByUserId_ByKey(
-    sdk,
+    user.sdk,
     { userId: userId ?? '', key: PROGRESS_KEY },
-    { enabled: userId !== null, retry: false, staleTime: Infinity }
+    { enabled: userId !== null, retry: false }
   )
-  const { mutateAsync: saveRecord } = usePublicPlayerRecordApi_UpdateRecord_ByUserId_ByKeyMutation(sdk)
+  const googlePlatforms = useUsersApi_GetPlatforms_ByUserId_v3(
+    user.sdk,
+    { userId: userId ?? '', queryParams: { platformId: 'google' } },
+    { enabled: userId !== null }
+  )
+  const googleLinked = googlePlatforms.data?.data.some(platform => platform.platformId === 'google') ?? false
 
-  useEffect(() => applyProgress(getLocalProgress()), [applyProgress])
+  let status: ConnectionStatus = 'connecting'
+  if (loginFailed || googlePlatforms.isError) status = 'offline'
+  else if (userId && googlePlatforms.isSuccess) status = 'online'
 
-  // After sign-in the account's progress wins over this device's; local progress is only uploaded
-  // (and then cleared) when the account has none.
+  useEffect(() => setProgress(getLocalProgress()), [])
+
+  const progressRef = useRef(progress)
   useEffect(() => {
-    if (!userId || !pendingSyncRef.current) return
+    progressRef.current = progress
+  }, [progress])
+
+  // Covers the first load, sign-out, and an expired session.
+  useEffect(() => {
+    if (userId || loginFailed) return
+    grantToken({ platformId: 'device', data: { device_id: getActiveDeviceId() } })
+      .then(token => {
+        user.signIn(token)
+        pendingSyncRef.current = {}
+        setUserId(token.user_id!)
+      })
+      // the game keeps working on localStorage progress alone
+      .catch(() => setLoginFailed(true))
+  }, [userId, loginFailed, grantToken, user])
+
+  // Once the record is fetched, merge in the pending progress plus anything left in localStorage (from
+  // before device accounts, or saved while AGS was unreachable).
+  useEffect(() => {
+    const pending = pendingSyncRef.current
+    if (!userId || !pending || record.isFetching) return
     const missing = record.isError && isNotFound(record.error)
     if (!record.isSuccess && !missing) return
-    pendingSyncRef.current = false
+    pendingSyncRef.current = null
 
     const remote = ((record.data?.value as { progress?: ProgressMap } | undefined)?.progress ?? {}) as ProgressMap
-    const local = getLocalProgress()
-
-    if (hasEntries(remote)) {
-      clearLocalProgress()
-      applyProgress(remote)
-      return
+    const merged = mergeProgress(mergeProgress(remote, pending), getLocalProgress())
+    setProgress(merged)
+    if (improvesOn(merged, remote)) {
+      saveRecord({ userId, key: PROGRESS_KEY, data: { progress: merged } }).then(clearLocalProgress, () => setLocalProgress(merged))
     }
-    if (!hasEntries(local)) return
-    applyProgress(local)
-    saveRecord({ userId, key: PROGRESS_KEY, data: { progress: local } })
-      .then(clearLocalProgress)
-      .catch(() => {})
-  }, [userId, record.isSuccess, record.isError, record.error, record.data, applyProgress, saveRecord])
+  }, [userId, record.isFetching, record.isSuccess, record.isError, record.error, record.data, saveRecord])
 
-  const signInWithGoogle = useCallback(
-    async (idToken: string) => {
-      const token = await googleLogin({ platformId: 'google', data: { platform_token: idToken } })
-      user.signIn(token)
-      pendingSyncRef.current = true
-      setUserId(token.user_id!)
-    },
-    [googleLogin, user]
-  )
+  const signInWithGoogle = async (idToken: string): Promise<GoogleOutcome> => {
+    let token
+    try {
+      // createHeadless=false makes IAM report an unowned Google account instead of creating a user for it
+      token = await grantToken({ platformId: 'google', data: { platform_token: idToken, createHeadless: false } })
+    } catch (error) {
+      if (!isGoogleNotLinked(error) || !userId) throw error
+      await linkPlatform({ platformId: 'google', data: { ticket: idToken } })
+      await googlePlatforms.refetch()
+      return 'linked'
+    }
 
-  const signOut = useCallback(() => {
+    const googleUserId = token.user_id!
+    if (googleUserId === userId) {
+      await googlePlatforms.refetch()
+      return 'linked'
+    }
+
+    setGoogleDeviceId(await getOrLinkDeviceId(createTokenSdk(token.access_token), googleUserId))
+    user.signIn(token)
+    pendingSyncRef.current = progress
+    setUserId(googleUserId)
+    return 'switched'
+  }
+
+  const signOut = () => {
+    // A Google link on this browser's own device ID stays with that account; start a fresh guest.
+    if (getGoogleDeviceId()) clearGoogleDeviceId()
+    else resetDeviceId()
     user.signOut()
-    endSession()
-  }, [user, endSession])
+    setProgress(getLocalProgress())
+    setUserId(null)
+  }
 
+  // Stable across progress changes: Board re-runs its finish effect whenever this changes.
   const recordCompletion = useCallback(
     (id: string, timeMs: number): LevelProgress => {
       const next = withCompletion(progressRef.current, id, timeMs)
-      applyProgress(next)
+      setProgress(next)
       if (userId) {
         // keep the result locally if AGS can't be reached
         saveRecord({ userId, key: PROGRESS_KEY, data: { progress: next } }).catch(() =>
@@ -119,15 +170,14 @@ function ProgressStateProvider({ children }: { children: React.ReactNode }) {
       }
       return next[id]
     },
-    [applyProgress, saveRecord, userId]
+    [userId, saveRecord]
   )
 
-  const value = useMemo(
-    () => ({ progress, signedIn: userId !== null, signInWithGoogle, signOut, recordCompletion }),
-    [progress, userId, signInWithGoogle, signOut, recordCompletion]
+  return (
+    <ProgressContext.Provider value={{ progress, status, googleLinked, signInWithGoogle, signOut, recordCompletion }}>
+      {children}
+    </ProgressContext.Provider>
   )
-
-  return <ProgressContext.Provider value={value}>{children}</ProgressContext.Provider>
 }
 
 export function ProgressProvider({ children }: { children: React.ReactNode }) {

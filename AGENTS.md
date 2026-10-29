@@ -13,5 +13,7 @@ A Queens puzzle game (Next.js App Router, React Three Fiber, Tailwind).
 - `lib/generator/generate.ts` produces boards that must remain solvable by pure human-style
   deduction (see `lib/generator/logicalSolver.ts`) with a unique solution (see
   `lib/generator/solver.ts`). Keep both invariants when touching generation logic.
+- Feature specs live in `specs/`. Read the relevant spec before changing that feature, and update it
+  in the same change when behaviour changes. Its acceptance scenarios define done.
 - Lint with `npm run lint` (oxlint) and format with `npm run format` (oxfmt) — not
   eslint/prettier.

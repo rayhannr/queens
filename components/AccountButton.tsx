@@ -2,28 +2,32 @@
 
 import Script from 'next/script'
 import { useEffect, useRef, useState } from 'react'
-import { useProgress } from './ProgressProvider'
+import { useProgress, type GoogleOutcome } from './ProgressProvider'
 
 declare global {
   interface Window {
     google?: {
       accounts: {
         id: {
-          initialize: (config: { client_id: string; auto_select?: boolean; callback: (response: { credential: string }) => void }) => void
+          initialize: (config: { client_id: string; callback: (response: { credential: string }) => void }) => void
           renderButton: (parent: HTMLElement, options: { theme: string; size: string }) => void
-          prompt: () => void
-          disableAutoSelect: () => void
         }
       }
     }
   }
 }
 
+const outcomeMessages: Record<GoogleOutcome, string> = {
+  linked: 'Google linked. Sign in with it on any device to pick up this progress.',
+  switched: 'Signed in. Progress from this device was added to your Google account.'
+}
+
 export function AccountButton() {
-  const { signedIn, signInWithGoogle, signOut } = useProgress()
+  const { status, googleLinked, signInWithGoogle, signOut } = useProgress()
   const [open, setOpen] = useState(false)
   const [googleReady, setGoogleReady] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const googleButtonRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -37,33 +41,71 @@ export function AccountButton() {
     return () => document.removeEventListener('mousedown', onOutsideClick)
   }, [open])
 
-  // sign a returning Google user back in on load, since no token survives a reload
   useEffect(() => {
-    if (!googleReady || !window.google) return
+    if (!open || googleLinked || status !== 'online' || !googleReady || !googleButtonRef.current || !window.google) return
 
     window.google.accounts.id.initialize({
       client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
-      auto_select: true,
       callback: async response => {
         setError(null)
+        setMessage(null)
         setBusy(true)
         try {
-          await signInWithGoogle(response.credential)
-          setOpen(false)
+          setMessage(outcomeMessages[await signInWithGoogle(response.credential)])
         } catch {
-          setError('Could not sign in with Google. Try again in a moment.')
+          setError('Could not continue with Google. Try again in a moment.')
         } finally {
           setBusy(false)
         }
       }
     })
-    window.google.accounts.id.prompt()
-  }, [googleReady, signInWithGoogle])
-
-  useEffect(() => {
-    if (!open || signedIn || !googleReady || !googleButtonRef.current || !window.google) return
     window.google.accounts.id.renderButton(googleButtonRef.current, { theme: 'outline', size: 'medium' })
-  }, [open, signedIn, googleReady])
+  }, [open, googleLinked, status, googleReady, signInWithGoogle])
+
+  const renderPanel = () => {
+    if (status === 'connecting') return <p className="text-xs text-zinc-500">Connecting…</p>
+
+    if (status === 'offline') {
+      return (
+        <p className="text-xs text-zinc-600 dark:text-zinc-400">
+          Can’t reach the server right now. Progress is saved on this device until it’s back.
+        </p>
+      )
+    }
+
+    if (googleLinked) {
+      return (
+        <>
+          <p className="text-xs text-zinc-600 dark:text-zinc-400">
+            Signed in with Google. Use the same Google account on any device to pick up your progress.
+          </p>
+          {message && <p className="text-xs text-emerald-600 dark:text-emerald-400">{message}</p>}
+          <button
+            type="button"
+            onClick={() => {
+              setMessage(null)
+              signOut()
+            }}
+            className="w-full rounded-full border border-black/10 px-3 py-1.5 text-xs font-medium transition-colors hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10"
+          >
+            Sign out
+          </button>
+        </>
+      )
+    }
+
+    return (
+      <>
+        <p className="text-xs text-zinc-600 dark:text-zinc-400">
+          Your progress is saved to this device. Continue with Google to keep it across devices.
+        </p>
+        <div ref={googleButtonRef} className={busy ? 'pointer-events-none opacity-50' : undefined} />
+        {busy && <p className="text-xs text-zinc-500">Connecting…</p>}
+        {message && <p className="text-xs text-emerald-600 dark:text-emerald-400">{message}</p>}
+        {error && <p className="text-xs text-red-500">{error}</p>}
+      </>
+    )
+  }
 
   return (
     <div ref={containerRef} className="fixed right-4 top-4 z-20">
@@ -74,7 +116,7 @@ export function AccountButton() {
         aria-label="Account"
         aria-expanded={open}
         className={`flex h-9 w-9 items-center justify-center rounded-full border border-black/10 bg-white/80 backdrop-blur transition-colors hover:bg-black/5 dark:border-white/10 dark:bg-zinc-900/80 dark:hover:bg-white/10 ${
-          signedIn ? 'text-emerald-500' : 'text-zinc-500 dark:text-zinc-400'
+          googleLinked ? 'text-emerald-500' : 'text-zinc-500 dark:text-zinc-400'
         }`}
       >
         <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
@@ -84,31 +126,7 @@ export function AccountButton() {
 
       {open && (
         <div className="absolute right-0 top-full mt-2 w-64 space-y-3 rounded-xl border border-black/10 bg-white p-3 text-sm shadow-lg dark:border-white/10 dark:bg-zinc-900">
-          {signedIn ? (
-            <>
-              <p className="text-xs text-zinc-600 dark:text-zinc-400">Signed in. Your progress is saved to your account.</p>
-              <button
-                type="button"
-                onClick={() => {
-                  window.google?.accounts.id.disableAutoSelect()
-                  signOut()
-                  setOpen(false)
-                }}
-                className="w-full rounded-full border border-black/10 px-3 py-1.5 text-xs font-medium transition-colors hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10"
-              >
-                Sign out
-              </button>
-            </>
-          ) : (
-            <>
-              <p className="text-xs text-zinc-600 dark:text-zinc-400">
-                Sign in with Google to keep your progress across devices. Progress on this device is moved to your account.
-              </p>
-              <div ref={googleButtonRef} className={busy ? 'pointer-events-none opacity-50' : undefined} />
-              {busy && <p className="text-xs text-zinc-500">Signing in…</p>}
-              {error && <p className="text-xs text-red-500">{error}</p>}
-            </>
-          )}
+          {renderPanel()}
         </div>
       )}
     </div>

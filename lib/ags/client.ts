@@ -12,9 +12,17 @@ const coreConfig = { baseURL, clientId, namespace, redirectURI: baseURL }
 export const createLoginSdk = () =>
   AccelByte.SDK({ coreConfig, axiosConfig: { request: { headers: { Authorization: `Basic ${btoa(`${clientId}:`)}` } } } })
 
-interface LoginToken {
+export interface LoginToken {
   access_token: string
   refresh_token?: string | null
+  user_id?: string | null
+}
+
+// For one-off reads as another user (e.g. the Google account's record) without touching the session.
+export const createTokenSdk = (accessToken: string) => {
+  const sdk = AccelByte.SDK({ coreConfig })
+  sdk.setToken({ accessToken })
+  return sdk
 }
 
 // Tokens are kept in memory only; the auth interceptor renews an expired access token with the refresh token.
