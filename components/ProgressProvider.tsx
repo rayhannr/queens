@@ -73,6 +73,7 @@ function ProgressStateProvider({ children }: { children: React.ReactNode }) {
     { userId: userId ?? '', key: PROGRESS_KEY },
     { enabled: userId !== null, retry: false }
   )
+  const { refetch: refetchRecord } = record
   const googlePlatforms = useUsersApi_GetPlatforms_ByUserId_v3(
     user.sdk,
     { userId: userId ?? '', queryParams: { platformId: 'google' } },
@@ -161,17 +162,24 @@ function ProgressStateProvider({ children }: { children: React.ReactNode }) {
       const next = withCompletion(progressRef.current, id, timeMs)
       setProgress(next)
       if (userId && !pendingSyncRef.current) {
-        // keep the result locally if AGS can't be reached
-        saveRecord({ userId, key: PROGRESS_KEY, data: { progress: next } }).catch(() =>
-          setLocalProgress(mergeProgress(getLocalProgress(), next))
-        )
+        // Merge the current remote record first so another tab or device's progress isn't overwritten;
+        // keep the result locally if AGS can't be reached.
+        refetchRecord()
+          .then(result => {
+            if (result.isError && !isNotFound(result.error)) throw result.error
+            const remote = ((result.data?.value as { progress?: ProgressMap } | undefined)?.progress ?? {}) as ProgressMap
+            const merged = mergeProgress(remote, next)
+            setProgress(merged)
+            return saveRecord({ userId, key: PROGRESS_KEY, data: { progress: merged } })
+          })
+          .catch(() => setLocalProgress(mergeProgress(getLocalProgress(), next)))
       } else {
         // before the first sync `next` lacks the remote record, so saving it would overwrite that
         setLocalProgress(mergeProgress(getLocalProgress(), next))
       }
       return next[id]
     },
-    [userId, saveRecord]
+    [userId, saveRecord, refetchRecord]
   )
 
   return (

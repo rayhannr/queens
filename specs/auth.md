@@ -49,6 +49,9 @@ No access or refresh token is persisted.
    `queens:progress`. The merge in step 3 then pushes them, so a Cloud Save outage at load (IAM up)
    can never overwrite the stored record with a partial one. A failed record fetch is retried on tab
    focus.
+6. After that, each completion re-reads the Cloud Save record and saves the merge of it with the
+   in-memory progress, so progress made meanwhile in another tab or on another device is kept. If the
+   read or the save fails, the result is kept in `queens:progress`.
 
 ### Continue with Google
 
