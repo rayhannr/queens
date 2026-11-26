@@ -45,6 +45,10 @@ No access or refresh token is persisted.
 3. One-time migration: if `queens:progress` holds entries from before this change, merge them into
    the account's Cloud Save record.
 4. If AGS is unreachable, the game keeps working on `queens:progress` alone.
+5. Until the account's Cloud Save record has loaded and been merged, completions are saved only to
+   `queens:progress`. The merge in step 3 then pushes them, so a Cloud Save outage at load (IAM up)
+   can never overwrite the stored record with a partial one. A failed record fetch is retried on tab
+   focus.
 
 ### Continue with Google
 

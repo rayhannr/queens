@@ -160,13 +160,14 @@ function ProgressStateProvider({ children }: { children: React.ReactNode }) {
     (id: string, timeMs: number): LevelProgress => {
       const next = withCompletion(progressRef.current, id, timeMs)
       setProgress(next)
-      if (userId) {
+      if (userId && !pendingSyncRef.current) {
         // keep the result locally if AGS can't be reached
         saveRecord({ userId, key: PROGRESS_KEY, data: { progress: next } }).catch(() =>
           setLocalProgress(mergeProgress(getLocalProgress(), next))
         )
       } else {
-        setLocalProgress(next)
+        // before the first sync `next` lacks the remote record, so saving it would overwrite that
+        setLocalProgress(mergeProgress(getLocalProgress(), next))
       }
       return next[id]
     },
